@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Турник</title>
 
-  <!-- Настройки iOS PWA (полноэкранный режим на iPhone) -->
+  <!-- Настройки iOS Safari PWA (полноэкранный режим на iPhone) -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Турник">
@@ -20,11 +20,11 @@
         extend: {
           colors: {
             oled: '#000000',
-            surface: '#141414',
-            hairline: '#262626',
-            muted: '#8A8A8E',
-            accent: '#FF5500',
-            skipped: '#2C2C2E',
+            card: '#111113',
+            cardAlt: '#18181B',
+            muted: '#8E8E93',
+            accent: '#FF6B00',
+            skipped: '#27272A',
           },
           fontFamily: {
             sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'Helvetica Neue', 'Arial', 'sans-serif'],
@@ -35,7 +35,7 @@
   </script>
 
   <style>
-    /* Базовые настройки под OLED iPhone без лишних эффектов */
+    /* Базовые настройки под OLED iPhone */
     html, body {
       background-color: #000000;
       color: #FFFFFF;
@@ -44,7 +44,27 @@
       overscroll-behavior-y: none;
     }
 
-    /* Убираем стрелки у числовых инпутов */
+    /* Тонкие iOS-границы */
+    .hairline-border {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .hairline-top {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .hairline-bottom {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Полупрозрачный нижний таббар в стиле iOS */
+    .ios-tabbar {
+      background-color: rgba(12, 12, 14, 0.86);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
+    }
+
+    /* Убираем стрелки у числовых полей */
     input[type="number"]::-webkit-inner-spin-button,
     input[type="number"]::-webkit-outer-spin-button {
       -webkit-appearance: none;
@@ -54,150 +74,314 @@
       -moz-appearance: textfield;
     }
 
-    /* Безопасные отступы для iPhone с Dynamic Island / челкой */
+    /* Безопасные отступы для iPhone с Dynamic Island и Home Indicator */
     .safe-top {
-      padding-top: max(1.25rem, env(safe-area-inset-top));
+      padding-top: max(1rem, env(safe-area-inset-top));
     }
-    .safe-bottom {
-      padding-bottom: max(2rem, env(safe-area-inset-bottom));
+    .safe-bottom-nav {
+      padding-bottom: max(0.6rem, env(safe-area-inset-bottom));
+    }
+    .main-bottom-pad {
+      padding-bottom: calc(5.75rem + env(safe-area-inset-bottom));
+    }
+
+    /* Плавная полоса прогресса */
+    .progress-fill {
+      transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Переключение вкладок */
+    .tab-panel {
+      display: none;
+    }
+    .tab-panel.active {
+      display: flex;
     }
   </style>
 </head>
 <body class="bg-oled text-white font-sans min-h-screen selection:bg-accent selection:text-white">
 
-  <!-- Основной контейнер: на десктопе центрирован (430px), на iPhone на всю ширину -->
-  <main class="w-full max-w-[430px] mx-auto px-4 safe-top safe-bottom flex flex-col gap-5">
+  <!-- Основной контейнер: центрирован на десктопе, на всю ширину на iPhone -->
+  <div class="w-full max-w-[430px] mx-auto px-4 safe-top main-bottom-pad">
 
-    <!-- Шапка: название и текущая дата по МСК -->
-    <header class="flex items-baseline justify-between pt-1 pb-1 border-b border-hairline">
-      <h1 class="text-lg font-bold tracking-tight uppercase">Турник</h1>
-      <p id="msk-date-label" class="text-xs text-muted font-medium tabular-nums">Загрузка...</p>
-    </header>
+    <!-- ===================================================================== -->
+    <!-- ВКЛАДКА 1: ГЛАВНАЯ -->
+    <!-- ===================================================================== -->
+    <section id="tab-home" class="tab-panel active flex-col gap-4" aria-label="Главная">
 
-    <!-- 1. Карточка отметки за сегодня (МСК) -->
-    <section id="today-card" class="bg-surface border border-hairline rounded-xl p-4" aria-label="Отметка за сегодня">
-      <!-- Динамически рендерится из JS -->
+      <!-- Верхняя панель: название, дата МСК, серия дней -->
+      <header class="flex items-center justify-between pt-1 pb-2 hairline-bottom">
+        <div>
+          <h1 class="text-xl font-bold tracking-tight leading-none">Турник</h1>
+          <p id="msk-date-label" class="text-xs text-muted font-medium mt-1 tabular-nums">Загрузка...</p>
+        </div>
+
+        <!-- Бейдж серии (подряд дней на площадке) -->
+        <div id="streak-badge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card hairline-border">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="text-accent shrink-0">
+            <path d="M12 2C12 2 16.5 6.2 16.5 11.2C16.5 13.7 15.1 15.8 13.1 16.7C13.7 15.4 13.5 13.6 12.1 12.4C11.4 14.3 9.7 15.4 9.7 17.3C9.7 18.7 10.6 19.9 11.9 20.4C8.4 20.1 6 17.2 6 13.6C6 9.3 9.6 5.5 12 2Z" fill="currentColor"/>
+          </svg>
+          <span id="streak-value" class="text-xs font-semibold tabular-nums">0 дн.</span>
+        </div>
+      </header>
+
+      <!-- Карточка цели на месяц (строго с 1-го по последнее число по МСК) -->
+      <div class="bg-card hairline-border rounded-2xl p-4">
+        <div class="flex items-baseline justify-between gap-2">
+          <div>
+            <p class="text-[11px] uppercase tracking-wider text-muted font-medium">Цель на месяц</p>
+            <h2 id="goal-month-label" class="text-sm font-semibold mt-0.5 text-white/90">Ноябрь 2026 · 1–30</h2>
+          </div>
+          <span id="goal-percent" class="text-sm font-bold text-accent tabular-nums">0%</span>
+        </div>
+
+        <div class="mt-3 flex items-baseline gap-1.5">
+          <span id="goal-current" class="text-4xl font-bold tracking-tight leading-none tabular-nums">0</span>
+          <span class="text-lg text-muted font-medium tabular-nums">/ <span id="goal-target">200</span></span>
+        </div>
+
+        <!-- Полоса прогресса -->
+        <div class="w-full h-2.5 bg-cardAlt rounded-full overflow-hidden mt-3.5">
+          <div id="goal-progress-bar" class="h-full bg-accent rounded-full progress-fill" style="width: 0%"></div>
+        </div>
+
+        <!-- Остаток дней и средний темп -->
+        <div class="mt-3.5 pt-3 hairline-top flex items-center justify-between text-xs text-muted tabular-nums">
+          <span id="goal-days-left">Осталось — дн.</span>
+          <span id="goal-pace" class="text-white/85 font-medium">— / день</span>
+        </div>
+      </div>
+
+      <!-- Карточка отметки за сегодня (МСК) -->
+      <div id="today-card" class="bg-card hairline-border rounded-2xl p-4" aria-label="Отметка за сегодня">
+        <!-- Рендерится динамически из JS -->
+      </div>
+
+      <!-- 3-колоночная сводка: Сегодня / Неделя / Месяц -->
+      <div class="grid grid-cols-3 gap-2.5" aria-label="Сводка">
+        <div class="bg-card hairline-border rounded-2xl p-3.5 flex flex-col justify-between">
+          <span class="text-[11px] uppercase tracking-wider text-muted font-medium">Сегодня</span>
+          <div class="mt-2">
+            <div id="stat-day-reps" class="text-2xl font-bold leading-none tabular-nums">0</div>
+            <div id="stat-day-sub" class="text-[11px] text-muted mt-1.5 tabular-nums">—</div>
+          </div>
+        </div>
+
+        <div class="bg-card hairline-border rounded-2xl p-3.5 flex flex-col justify-between">
+          <span class="text-[11px] uppercase tracking-wider text-muted font-medium">Неделя</span>
+          <div class="mt-2">
+            <div id="stat-week-reps" class="text-2xl font-bold leading-none tabular-nums">0</div>
+            <div id="stat-week-days" class="text-[11px] text-muted mt-1.5 tabular-nums">0 дн.</div>
+          </div>
+        </div>
+
+        <div class="bg-card hairline-border rounded-2xl p-3.5 flex flex-col justify-between">
+          <span class="text-[11px] uppercase tracking-wider text-muted font-medium">Месяц</span>
+          <div class="mt-2">
+            <div id="stat-month-reps" class="text-2xl font-bold leading-none tabular-nums">0</div>
+            <div id="stat-month-days" class="text-[11px] text-muted mt-1.5 tabular-nums">0 дн.</div>
+          </div>
+        </div>
+      </div>
     </section>
 
-    <!-- 2. Сводная статистика: День / Неделя / Месяц -->
-    <section class="grid grid-cols-3 gap-2.5" aria-label="Сводная статистика">
-      <div class="bg-surface border border-hairline rounded-xl p-3 flex flex-col justify-between">
-        <span class="text-[11px] uppercase tracking-wider text-muted font-medium">День</span>
-        <div class="mt-2">
-          <div id="stat-day-reps" class="text-2xl font-bold leading-none tabular-nums">0</div>
-          <div id="stat-day-sub" class="text-[11px] text-muted mt-1.5 tabular-nums">—</div>
+    <!-- ===================================================================== -->
+    <!-- ВКЛАДКА 2: СТАТИСТИКА -->
+    <!-- ===================================================================== -->
+    <section id="tab-stats" class="tab-panel flex-col gap-4" aria-label="Статистика">
+
+      <header class="pt-1 pb-2 hairline-bottom">
+        <h1 class="text-xl font-bold tracking-tight leading-none">Статистика</h1>
+        <p class="text-xs text-muted font-medium mt-1">Календарь и динамика по МСК</p>
+      </header>
+
+      <!-- Календарь посещений (Пн–Вс) -->
+      <div class="bg-card hairline-border rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-4">
+          <h2 id="calendar-month-title" class="text-sm font-semibold">Месяц</h2>
+          <div class="flex items-center gap-1.5">
+            <button
+              id="cal-prev-btn"
+              type="button"
+              aria-label="Предыдущий месяц"
+              class="w-9 h-9 flex items-center justify-center rounded-xl bg-cardAlt hairline-border text-white active:bg-skipped touch-manipulation transition-colors"
+            >
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 12L6 8L10 4"/>
+              </svg>
+            </button>
+            <button
+              id="cal-next-btn"
+              type="button"
+              aria-label="Следующий месяц"
+              class="w-9 h-9 flex items-center justify-center rounded-xl bg-cardAlt hairline-border text-white active:bg-skipped disabled:opacity-30 touch-manipulation transition-colors"
+            >
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 12L10 8L6 4"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Заголовки дней недели -->
+        <div class="grid grid-cols-7 gap-1.5 mb-2 text-center">
+          <span class="text-[11px] text-muted font-medium">Пн</span>
+          <span class="text-[11px] text-muted font-medium">Вт</span>
+          <span class="text-[11px] text-muted font-medium">Ср</span>
+          <span class="text-[11px] text-muted font-medium">Чт</span>
+          <span class="text-[11px] text-muted font-medium">Пт</span>
+          <span class="text-[11px] text-muted font-medium">Сб</span>
+          <span class="text-[11px] text-muted font-medium">Вс</span>
+        </div>
+
+        <!-- Сетка дней -->
+        <div id="calendar-grid" class="grid grid-cols-7 gap-1.5"></div>
+
+        <!-- Легенда -->
+        <div class="flex items-center justify-between mt-4 pt-3 hairline-top text-[11px] text-muted">
+          <div class="flex items-center gap-3">
+            <span class="inline-flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-sm bg-accent inline-block"></span>
+              Был
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-sm bg-skipped inline-block"></span>
+              Пропуск
+            </span>
+          </div>
+          <span>Тап по дню — правка</span>
         </div>
       </div>
 
-      <div class="bg-surface border border-hairline rounded-xl p-3 flex flex-col justify-between">
-        <span class="text-[11px] uppercase tracking-wider text-muted font-medium">Неделя</span>
-        <div class="mt-2">
-          <div id="stat-week-reps" class="text-2xl font-bold leading-none tabular-nums">0</div>
-          <div id="stat-week-days" class="text-[11px] text-muted mt-1.5 tabular-nums">0 дн.</div>
+      <!-- График за последние 14 дней -->
+      <div class="bg-card hairline-border rounded-2xl p-4">
+        <div class="flex items-baseline justify-between mb-4">
+          <h2 class="text-sm font-semibold">Последние 14 дней</h2>
+          <span id="chart-14d-total" class="text-xs text-muted tabular-nums">0 раз</span>
         </div>
-      </div>
 
-      <div class="bg-surface border border-hairline rounded-xl p-3 flex flex-col justify-between">
-        <span class="text-[11px] uppercase tracking-wider text-muted font-medium">Месяц</span>
-        <div class="mt-2">
-          <div id="stat-month-reps" class="text-2xl font-bold leading-none tabular-nums">0</div>
-          <div id="stat-month-days" class="text-[11px] text-muted mt-1.5 tabular-nums">0 дн.</div>
+        <div id="chart-14d" class="grid gap-1 items-end h-36 pt-5" style="grid-template-columns: repeat(14, minmax(0, 1fr));">
+          <!-- Столбцы рендерятся из JS -->
         </div>
       </div>
     </section>
 
-    <!-- 3. Визуальная статистика: Календарь посещений -->
-    <section class="bg-surface border border-hairline rounded-xl p-4" aria-label="Календарь посещений">
-      <div class="flex items-center justify-between mb-4">
-        <h2 id="calendar-month-title" class="text-sm font-semibold capitalize">Месяц</h2>
-        <div class="flex items-center gap-1.5">
+    <!-- ===================================================================== -->
+    <!-- ВКЛАДКА 3: НАСТРОЙКИ -->
+    <!-- ===================================================================== -->
+    <section id="tab-settings" class="tab-panel flex-col gap-4" aria-label="Настройки">
+
+      <header class="pt-1 pb-2 hairline-bottom">
+        <h1 class="text-xl font-bold tracking-tight leading-none">Настройки</h1>
+        <p class="text-xs text-muted font-medium mt-1">Цель на месяц и резервная копия</p>
+      </header>
+
+      <!-- Редактор цели на месяц -->
+      <div class="bg-card hairline-border rounded-2xl p-4">
+        <label for="settings-goal-input" class="block text-sm font-semibold">Цель на месяц (подтягиваний)</label>
+        <p class="text-xs text-muted mt-1">Считается строго с 1-го по последнее число месяца по МСК.</p>
+
+        <input
+          id="settings-goal-input"
+          type="number"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          min="1"
+          max="99999"
+          placeholder="200"
+          class="w-full mt-3.5 bg-oled hairline-border focus:border-white/40 rounded-xl px-4 py-3.5 text-3xl font-bold text-white tabular-nums outline-none transition-colors"
+        >
+
+        <!-- Быстрые пресеты -->
+        <div class="grid grid-cols-4 gap-2 mt-3">
+          <button type="button" data-goal-preset="150" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation transition-colors">150</button>
+          <button type="button" data-goal-preset="200" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation transition-colors">200</button>
+          <button type="button" data-goal-preset="300" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation transition-colors">300</button>
+          <button type="button" data-goal-preset="500" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation transition-colors">500</button>
+        </div>
+
+        <button
+          id="settings-save-goal-btn"
+          type="button"
+          class="w-full mt-4 py-3.5 rounded-xl bg-accent text-white font-semibold text-sm active:opacity-85 touch-manipulation transition-opacity"
+        >
+          Сохранить цель
+        </button>
+      </div>
+
+      <!-- Резервное копирование JSON -->
+      <div class="bg-card hairline-border rounded-2xl p-4">
+        <h2 class="text-sm font-semibold">Резервная копия</h2>
+        <p class="text-xs text-muted mt-1 leading-relaxed">
+          Данные хранятся локально в браузере (localStorage). Выгружай JSON, чтобы не потерять историю при очистке Safari.
+        </p>
+
+        <div class="grid grid-cols-2 gap-2.5 mt-4">
           <button
-            id="cal-prev-btn"
+            id="export-btn"
             type="button"
-            aria-label="Предыдущий месяц"
-            class="w-8 h-8 flex items-center justify-center rounded-lg border border-hairline text-white active:bg-skipped touch-manipulation transition-colors"
+            class="py-3 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped touch-manipulation transition-colors"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10 12L6 8L10 4"/>
-            </svg>
+            Экспорт JSON
           </button>
           <button
-            id="cal-next-btn"
+            id="import-btn"
             type="button"
-            aria-label="Следующий месяц"
-            class="w-8 h-8 flex items-center justify-center rounded-lg border border-hairline text-white active:bg-skipped disabled:opacity-30 touch-manipulation transition-colors"
+            class="py-3 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped touch-manipulation transition-colors"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 12L10 8L6 4"/>
-            </svg>
+            Импорт JSON
           </button>
         </div>
-      </div>
-
-      <!-- Дни недели (Пн–Вс) -->
-      <div class="grid grid-cols-7 gap-1.5 mb-2 text-center">
-        <span class="text-[11px] text-muted font-medium">Пн</span>
-        <span class="text-[11px] text-muted font-medium">Вт</span>
-        <span class="text-[11px] text-muted font-medium">Ср</span>
-        <span class="text-[11px] text-muted font-medium">Чт</span>
-        <span class="text-[11px] text-muted font-medium">Пт</span>
-        <span class="text-[11px] text-muted font-medium">Сб</span>
-        <span class="text-[11px] text-muted font-medium">Вс</span>
-      </div>
-
-      <!-- Сетка дней месяца -->
-      <div id="calendar-grid" class="grid grid-cols-7 gap-1.5"></div>
-
-      <!-- Компактная легенда -->
-      <div class="flex items-center justify-between mt-4 pt-3 border-t border-hairline text-[11px] text-muted">
-        <div class="flex items-center gap-3">
-          <span class="inline-flex items-center gap-1.5">
-            <span class="w-2.5 h-2.5 rounded-sm bg-accent inline-block"></span>
-            Был
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="w-2.5 h-2.5 rounded-sm bg-skipped inline-block"></span>
-            Пропуск
-          </span>
-        </div>
-        <span>Тап по дню — правка</span>
+        <input id="import-file-input" type="file" accept="application/json,.json" class="hidden">
       </div>
     </section>
 
-    <!-- 4. График за последние 14 дней (МСК) -->
-    <section class="bg-surface border border-hairline rounded-xl p-4" aria-label="График за 14 дней">
-      <div class="flex items-baseline justify-between mb-4">
-        <h2 class="text-sm font-semibold">Последние 14 дней</h2>
-        <span id="chart-14d-total" class="text-xs text-muted tabular-nums">0 раз</span>
-      </div>
+  </div>
 
-      <div id="chart-14d" class="grid grid-cols-14 gap-1 items-end h-36 pt-5" style="grid-template-columns: repeat(14, minmax(0, 1fr));">
-        <!-- Столбцы рендерятся из JS -->
-      </div>
-    </section>
-
-    <!-- 5. Резервная копия (Экспорт / Импорт JSON) -->
-    <footer class="flex items-center justify-center gap-4 pt-1 pb-2 text-xs text-muted">
-      <button id="export-btn" type="button" class="py-1.5 px-2 hover:text-white active:text-white touch-manipulation transition-colors">
-        Экспорт JSON
+  <!-- ======================================================================= -->
+  <!-- НИЖНЯЯ НАВИГАЦИЯ (iOS TAB BAR) -->
+  <!-- ======================================================================= -->
+  <nav class="fixed bottom-0 inset-x-0 z-30 ios-tabbar hairline-top safe-bottom-nav" aria-label="Навигация">
+    <div class="w-full max-w-[430px] mx-auto grid grid-cols-3 pt-2 px-2">
+      <button type="button" data-tab-btn="home" class="tab-nav-btn flex flex-col items-center justify-center gap-1 py-1 text-accent touch-manipulation transition-colors">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 10.5L12 3l9 7.5"/>
+          <path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/>
+        </svg>
+        <span class="text-[10px] font-semibold">Главная</span>
       </button>
-      <span class="text-hairline">|</span>
-      <button id="import-btn" type="button" class="py-1.5 px-2 hover:text-white active:text-white touch-manipulation transition-colors">
-        Импорт JSON
-      </button>
-      <input id="import-file-input" type="file" accept="application/json,.json" class="hidden">
-    </footer>
-  </main>
 
-  <!-- Модальное окно (Bottom Sheet) для редактирования любого дня -->
+      <button type="button" data-tab-btn="stats" class="tab-nav-btn flex flex-col items-center justify-center gap-1 py-1 text-muted touch-manipulation transition-colors">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="3"/>
+          <path d="M16 2v4M8 2v4M3 10h18"/>
+        </svg>
+        <span class="text-[10px] font-semibold">Статистика</span>
+      </button>
+
+      <button type="button" data-tab-btn="settings" class="tab-nav-btn flex flex-col items-center justify-center gap-1 py-1 text-muted touch-manipulation transition-colors">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="text-[10px] font-semibold">Настройки</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ======================================================================= -->
+  <!-- МОДАЛЬНОЕ ОКНО РЕДАКТИРОВАНИЯ ДНЯ (BOTTOM SHEET) -->
+  <!-- ======================================================================= -->
   <div id="day-modal-backdrop" class="fixed inset-0 bg-black/80 z-40 hidden items-end sm:items-center justify-center p-0 sm:p-4">
-    <div id="day-modal-panel" class="w-full max-w-[430px] bg-surface border-t sm:border border-hairline rounded-t-2xl sm:rounded-2xl p-5 safe-bottom">
+    <div id="day-modal-panel" class="w-full max-w-[430px] bg-card hairline-border rounded-t-3xl sm:rounded-3xl p-5 safe-bottom-nav">
+      <div class="w-10 h-1 bg-white/15 rounded-full mx-auto mb-4 sm:hidden"></div>
+
       <div class="flex items-center justify-between mb-4">
         <div>
           <p class="text-[11px] uppercase tracking-wider text-muted font-medium">Запись за день · МСК</p>
           <h3 id="modal-date-title" class="text-base font-semibold mt-0.5">—</h3>
         </div>
-        <button id="modal-close-btn" type="button" aria-label="Закрыть" class="w-8 h-8 rounded-lg border border-hairline flex items-center justify-center text-muted active:text-white touch-manipulation">
+        <button id="modal-close-btn" type="button" aria-label="Закрыть" class="w-8 h-8 rounded-full bg-cardAlt hairline-border flex items-center justify-center text-muted active:text-white touch-manipulation">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <path d="M4 4L12 12M12 4L4 12"/>
           </svg>
@@ -206,15 +390,15 @@
 
       <!-- Переключатель статуса -->
       <div class="grid grid-cols-2 gap-2.5 mb-4">
-        <button id="modal-status-yes" type="button" class="py-3 rounded-lg font-semibold text-sm border transition-colors touch-manipulation">
+        <button id="modal-status-yes" type="button" class="py-3 rounded-xl font-semibold text-sm transition-colors touch-manipulation">
           Был на площадке
         </button>
-        <button id="modal-status-no" type="button" class="py-3 rounded-lg font-semibold text-sm border transition-colors touch-manipulation">
+        <button id="modal-status-no" type="button" class="py-3 rounded-xl font-semibold text-sm transition-colors touch-manipulation">
           Пропуск
         </button>
       </div>
 
-      <!-- Блок ввода подтягиваний (виден, если выбран статус "Был") -->
+      <!-- Ввод подтягиваний -->
       <div id="modal-reps-block" class="mb-4">
         <label for="modal-reps-input" class="block text-xs text-muted mb-2">Сколько раз подтянулся?</label>
         <input
@@ -225,29 +409,29 @@
           min="0"
           max="9999"
           placeholder="0"
-          class="w-full bg-oled border border-hairline focus:border-white rounded-lg px-4 py-3 text-2xl font-bold text-white tabular-nums outline-none transition-colors"
+          class="w-full bg-oled hairline-border focus:border-white/40 rounded-xl px-4 py-3 text-2xl font-bold text-white tabular-nums outline-none transition-colors"
         >
         <div class="grid grid-cols-3 gap-2 mt-2.5">
-          <button type="button" data-modal-add="1" class="py-2.5 rounded-lg bg-oled border border-hairline text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+1</button>
-          <button type="button" data-modal-add="5" class="py-2.5 rounded-lg bg-oled border border-hairline text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+5</button>
-          <button type="button" data-modal-add="10" class="py-2.5 rounded-lg bg-oled border border-hairline text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+10</button>
+          <button type="button" data-modal-add="1" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+1</button>
+          <button type="button" data-modal-add="5" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+5</button>
+          <button type="button" data-modal-add="10" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+10</button>
         </div>
       </div>
 
-      <!-- Кнопки действий -->
+      <!-- Действия -->
       <div class="flex flex-col gap-2">
-        <button id="modal-save-btn" type="button" class="w-full py-3.5 rounded-lg bg-white text-black font-semibold text-sm active:opacity-80 touch-manipulation transition-opacity">
+        <button id="modal-save-btn" type="button" class="w-full py-3.5 rounded-xl bg-white text-black font-semibold text-sm active:opacity-85 touch-manipulation transition-opacity">
           Сохранить
         </button>
-        <button id="modal-clear-btn" type="button" class="w-full py-2.5 rounded-lg text-xs text-muted hover:text-white active:text-white touch-manipulation transition-colors">
+        <button id="modal-clear-btn" type="button" class="w-full py-2.5 rounded-xl text-xs text-muted active:text-white touch-manipulation transition-colors">
           Удалить запись за этот день
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Минималистичное уведомление (Toast) вместо alert() -->
-  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-white text-black text-xs font-semibold px-4 py-2.5 rounded-lg opacity-0 pointer-events-none transition-opacity duration-200">
+  <!-- Toast-уведомление (вместо alert) -->
+  <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-white text-black text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg opacity-0 pointer-events-none transition-opacity duration-200 whitespace-nowrap">
   </div>
 
   <script>
@@ -257,7 +441,9 @@
       // =========================================================================
       // КОНСТАНТЫ И ХРАНИЛИЩЕ
       // =========================================================================
-      const STORAGE_KEY = 'turnik_pwa_records_v1';
+      const RECORDS_KEY = 'turnik_pwa_records_v1';
+      const SETTINGS_KEY = 'turnik_pwa_settings_v1';
+      const DEFAULT_MONTHLY_GOAL = 200;
       const MOSCOW_TZ = 'Europe/Moscow';
 
       const WEEKDAYS_RU = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
@@ -266,30 +452,28 @@
 
       // Состояние приложения
       let records = loadRecords();
+      let settings = loadSettings();
       let todayKey = getTodayMskKey();
+      let activeTab = 'home';
 
-      // Текущий отображаемый месяц в календаре (год и месяц 0..11)
+      // Текущий отображаемый месяц в календаре
       const initialParts = parseDateKey(todayKey);
       let viewYear = initialParts.year;
-      let viewMonth = initialParts.month - 1;
+      let viewMonth = initialParts.month - 1; // 0..11
 
       // Режим карточки сегодняшнего дня: 'default' | 'input' | 'add_set' | 'edit'
       let todayCardMode = 'default';
 
-      // Состояние модального окна для редактирования произвольного дня
+      // Состояние модального окна редактирования дня
       let modalDateKey = null;
       let modalSelectedStatus = 'yes';
 
-      // Таймер для скрытия toast-уведомления
       let toastTimer = null;
 
       // =========================================================================
-      // РАБОТА С ДАТАМИ СТРОГО ПО МОСКОВСКОМУ ВРЕМЕНИ (Europe/Moscow, UTC+3)
+      // РАБОТА С ДАТАМИ СТРОГО ПО МОСКОВСКОМУ ВРЕМЕНИ (Europe/Moscow)
       // =========================================================================
 
-      /**
-       * Возвращает сегодняшнюю дату по МСК в формате 'YYYY-MM-DD'
-       */
       function getTodayMskKey() {
         try {
           const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -300,32 +484,21 @@
           });
           return formatter.format(new Date());
         } catch (err) {
-          // Фоллбэк на UTC+3, если окружение не поддерживает IANA timezone
-          const nowUtc = Date.now();
-          const mskDate = new Date(nowUtc + 3 * 60 * 60 * 1000);
+          const mskDate = new Date(Date.now() + 3 * 60 * 60 * 1000);
           return formatUtcDateKey(mskDate);
         }
       }
 
-      /**
-       * Разбирает строку 'YYYY-MM-DD' в числа { year, month (1..12), day }
-       */
       function parseDateKey(key) {
         const [y, m, d] = key.split('-').map(Number);
         return { year: y, month: m, day: d };
       }
 
-      /**
-       * Создает UTC Date на 00:00:00 для безопасной календарной арифметики без сдвигов часовых поясов
-       */
       function keyToUtcDate(key) {
         const { year, month, day } = parseDateKey(key);
         return new Date(Date.UTC(year, month - 1, day));
       }
 
-      /**
-       * Форматирует UTC Date обратно в 'YYYY-MM-DD'
-       */
       function formatUtcDateKey(dateObj) {
         const y = dateObj.getUTCFullYear();
         const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
@@ -333,26 +506,22 @@
         return `${y}-${m}-${d}`;
       }
 
-      /**
-       * Смещает дату 'YYYY-MM-DD' на deltaDays дней
-       */
       function shiftDateKey(key, deltaDays) {
         const dt = keyToUtcDate(key);
         dt.setUTCDate(dt.getUTCDate() + deltaDays);
         return formatUtcDateKey(dt);
       }
 
-      /**
-       * Возвращает индекс дня недели, где 0 = Понедельник, 6 = Воскресенье
-       */
+      function getDaysInMonth(year, month1Based) {
+        return new Date(Date.UTC(year, month1Based, 0)).getUTCDate();
+      }
+
+      // 0 = Понедельник ... 6 = Воскресенье
       function getWeekdayMonZero(key) {
-        const day = keyToUtcDate(key).getUTCDay(); // 0 = Вс, 1 = Пн...
+        const day = keyToUtcDate(key).getUTCDay();
         return (day + 6) % 7;
       }
 
-      /**
-       * Форматирует дату в читаемый вид: "Понедельник, 23 ноября · МСК"
-       */
       function formatFullDateRu(key, withMsk = true) {
         const dt = keyToUtcDate(key);
         const weekday = WEEKDAYS_RU[dt.getUTCDay()];
@@ -361,9 +530,6 @@
         return withMsk ? `${weekday}, ${day} ${month} · МСК` : `${weekday}, ${day} ${month}`;
       }
 
-      /**
-       * Склонение слова "раз" для русского языка
-       */
       function pluralizeReps(n) {
         const abs = Math.abs(n) % 100;
         const last = abs % 10;
@@ -378,11 +544,10 @@
 
       function loadRecords() {
         try {
-          const raw = localStorage.getItem(STORAGE_KEY);
+          const raw = localStorage.getItem(RECORDS_KEY);
           if (!raw) return {};
           const parsed = JSON.parse(raw);
-          if (!parsed || typeof parsed !== 'object') return {};
-          return parsed;
+          return parsed && typeof parsed === 'object' ? parsed : {};
         } catch (err) {
           return {};
         }
@@ -390,9 +555,31 @@
 
       function saveRecords() {
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+          localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
         } catch (err) {
           showToast('Ошибка сохранения данных');
+        }
+      }
+
+      function loadSettings() {
+        try {
+          const raw = localStorage.getItem(SETTINGS_KEY);
+          if (!raw) return { monthlyGoal: DEFAULT_MONTHLY_GOAL };
+          const parsed = JSON.parse(raw);
+          const goal = parseInt(parsed && parsed.monthlyGoal, 10);
+          return {
+            monthlyGoal: Number.isFinite(goal) && goal > 0 ? goal : DEFAULT_MONTHLY_GOAL
+          };
+        } catch (err) {
+          return { monthlyGoal: DEFAULT_MONTHLY_GOAL };
+        }
+      }
+
+      function saveSettings() {
+        try {
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        } catch (err) {
+          showToast('Ошибка сохранения настроек');
         }
       }
 
@@ -425,18 +612,127 @@
       }
 
       // =========================================================================
-      // РЕНДЕР: ШАПКА И КАРТОЧКА СЕГОДНЯШНЕГО ДНЯ
+      // НАВИГАЦИЯ ПО ВКЛАДКАМ
       // =========================================================================
 
-      function renderHeader() {
-        document.getElementById('msk-date-label').textContent = formatFullDateRu(todayKey, true);
+      function switchTab(tabName) {
+        activeTab = tabName;
+        const panels = {
+          home: document.getElementById('tab-home'),
+          stats: document.getElementById('tab-stats'),
+          settings: document.getElementById('tab-settings')
+        };
+
+        Object.keys(panels).forEach(key => {
+          panels[key].classList.toggle('active', key === tabName);
+        });
+
+        document.querySelectorAll('[data-tab-btn]').forEach(btn => {
+          const isCurrent = btn.getAttribute('data-tab-btn') === tabName;
+          btn.classList.toggle('text-accent', isCurrent);
+          btn.classList.toggle('text-muted', !isCurrent);
+        });
+
+        if (tabName === 'settings') {
+          document.getElementById('settings-goal-input').value = settings.monthlyGoal;
+        }
+
+        window.scrollTo({ top: 0, behavior: 'instant' });
       }
+
+      document.querySelectorAll('[data-tab-btn]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          switchTab(btn.getAttribute('data-tab-btn'));
+        });
+      });
+
+      // =========================================================================
+      // ПОДСЧЁТ СЕРИИ (STREAK) ПО МСК
+      // =========================================================================
+
+      function calculateStreak() {
+        let streak = 0;
+        let cursor = todayKey;
+
+        // Если сегодня ещё нет отметки (или не отмечено "Был"), проверяем серию со вчерашнего дня
+        const todayRec = records[todayKey];
+        if (!todayRec) {
+          cursor = shiftDateKey(todayKey, -1);
+        } else if (todayRec.status !== 'yes') {
+          return 0;
+        }
+
+        while (true) {
+          const rec = records[cursor];
+          if (rec && rec.status === 'yes') {
+            streak += 1;
+            cursor = shiftDateKey(cursor, -1);
+          } else {
+            break;
+          }
+        }
+        return streak;
+      }
+
+      // =========================================================================
+      // РЕНДЕР: ШАПКА И ЦЕЛЬ НА МЕСЯЦ (1-е — ПОСЛЕДНЕЕ ЧИСЛО ПО МСК)
+      // =========================================================================
+
+      function renderHeaderAndStreak() {
+        document.getElementById('msk-date-label').textContent = formatFullDateRu(todayKey, true);
+        const streak = calculateStreak();
+        document.getElementById('streak-value').textContent = `${streak} дн.`;
+      }
+
+      function renderMonthlyGoalCard() {
+        const { year, month, day } = parseDateKey(todayKey);
+        const daysInMonth = getDaysInMonth(year, month);
+        const monthPrefix = `${year}-${String(month).padStart(2, '0')}-`;
+
+        // Суммируем строго с 1-го по последнее число текущего месяца МСК
+        let monthReps = 0;
+        for (let d = 1; d <= daysInMonth; d++) {
+          const k = `${monthPrefix}${String(d).padStart(2, '0')}`;
+          const rec = records[k];
+          if (rec && rec.status === 'yes') {
+            monthReps += rec.reps || 0;
+          }
+        }
+
+        const goal = settings.monthlyGoal;
+        const pctRaw = goal > 0 ? Math.round((monthReps / goal) * 100) : 0;
+        const pctBar = Math.min(100, pctRaw);
+        const daysRemaining = Math.max(1, daysInMonth - day + 1); // включая сегодняшний день
+        const repsRemaining = Math.max(0, goal - monthReps);
+
+        document.getElementById('goal-month-label').textContent = `${MONTHS_NOM_RU[month - 1]} ${year} · 1–${daysInMonth}`;
+        document.getElementById('goal-current').textContent = monthReps;
+        document.getElementById('goal-target').textContent = goal;
+        document.getElementById('goal-percent').textContent = `${pctRaw}%`;
+        document.getElementById('goal-progress-bar').style.width = `${pctBar}%`;
+
+        document.getElementById('goal-days-left').textContent = `Осталось ${daysRemaining} дн.`;
+
+        const paceEl = document.getElementById('goal-pace');
+        if (repsRemaining === 0) {
+          paceEl.textContent = 'Цель выполнена';
+          paceEl.className = 'text-accent font-semibold';
+        } else {
+          const avgPerDay = Math.ceil(repsRemaining / daysRemaining);
+          paceEl.textContent = `Нужно ~${avgPerDay} / день`;
+          paceEl.className = 'text-white/85 font-medium';
+        }
+      }
+
+      // =========================================================================
+      // РЕНДЕР: КАРТОЧКА СЕГОДНЯШНЕГО ДНЯ
+      // =========================================================================
 
       function renderTodayCard() {
         const container = document.getElementById('today-card');
         const todayRec = records[todayKey];
 
-        // Режим ввода количества подтягиваний (первая отметка, добавление подхода или правка)
+        // Режим ввода цифр
         if (todayCardMode === 'input' || todayCardMode === 'add_set' || todayCardMode === 'edit') {
           const isAddSet = todayCardMode === 'add_set';
           const existingReps = todayRec && todayRec.status === 'yes' ? todayRec.reps : 0;
@@ -462,19 +758,19 @@
               max="9999"
               value="${initialVal}"
               placeholder="0"
-              class="w-full bg-oled border border-hairline focus:border-white rounded-lg px-4 py-3.5 text-3xl font-bold text-white tabular-nums outline-none transition-colors"
+              class="w-full bg-oled hairline-border focus:border-white/40 rounded-xl px-4 py-3.5 text-3xl font-bold text-white tabular-nums outline-none transition-colors"
             >
             <div class="grid grid-cols-3 gap-2 mt-2.5">
-              <button type="button" data-today-add="1" class="py-2.5 rounded-lg bg-oled border border-hairline text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+1</button>
-              <button type="button" data-today-add="5" class="py-2.5 rounded-lg bg-oled border border-hairline text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+5</button>
-              <button type="button" data-today-add="10" class="py-2.5 rounded-lg bg-oled border border-hairline text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+10</button>
+              <button type="button" data-today-add="1" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+1</button>
+              <button type="button" data-today-add="5" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+5</button>
+              <button type="button" data-today-add="10" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+10</button>
             </div>
             <div class="flex gap-2 mt-3">
-              <button id="today-save-btn" type="button" class="flex-1 py-3.5 rounded-lg bg-white text-black font-semibold text-sm active:opacity-80 touch-manipulation transition-opacity">
+              <button id="today-save-btn" type="button" class="flex-1 py-3.5 rounded-xl bg-white text-black font-semibold text-sm active:opacity-85 touch-manipulation transition-opacity">
                 ${submitText}
               </button>
               ${todayCardMode === 'edit' ? `
-                <button id="today-switch-no-btn" type="button" class="px-4 py-3.5 rounded-lg bg-oled border border-hairline text-muted font-medium text-sm active:text-white touch-manipulation">
+                <button id="today-switch-no-btn" type="button" class="px-4 py-3.5 rounded-xl bg-cardAlt hairline-border text-muted font-medium text-sm active:text-white touch-manipulation">
                   Пропуск
                 </button>
               ` : ''}
@@ -484,7 +780,6 @@
           const input = document.getElementById('today-reps-input');
           setTimeout(() => input && input.focus(), 30);
 
-          // Быстрые кнопки +1 / +5 / +10
           container.querySelectorAll('[data-today-add]').forEach(btn => {
             btn.addEventListener('click', () => {
               const delta = parseInt(btn.getAttribute('data-today-add'), 10);
@@ -494,7 +789,6 @@
             });
           });
 
-          // Сохранение по Enter
           input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
               document.getElementById('today-save-btn').click();
@@ -526,19 +820,18 @@
             todayCardMode = 'default';
             renderAll();
           });
-
           return;
         }
 
-        // Состояние 1: Сегодня ещё нет записи
+        // Состояние 1: Ещё не отмечено
         if (!todayRec) {
           container.innerHTML = `
             <p class="text-base font-semibold mb-4">Был сегодня на площадке?</p>
             <div class="grid grid-cols-2 gap-2.5">
-              <button id="btn-today-yes" type="button" class="py-4 rounded-lg bg-white text-black font-bold text-base tracking-wide active:opacity-80 touch-manipulation transition-opacity">
+              <button id="btn-today-yes" type="button" class="py-4 rounded-xl bg-white text-black font-bold text-base tracking-wide active:opacity-85 touch-manipulation transition-opacity">
                 ДА
               </button>
-              <button id="btn-today-no" type="button" class="py-4 rounded-lg bg-oled border border-hairline text-muted font-semibold text-base tracking-wide active:bg-skipped active:text-white touch-manipulation transition-colors">
+              <button id="btn-today-no" type="button" class="py-4 rounded-xl bg-cardAlt hairline-border text-muted font-semibold text-base tracking-wide active:bg-skipped active:text-white touch-manipulation transition-colors">
                 НЕТ
               </button>
             </div>
@@ -556,15 +849,15 @@
           return;
         }
 
-        // Состояние 2: Сегодня отмечен пропуск
+        // Состояние 2: Отмечен пропуск
         if (todayRec.status === 'no') {
           container.innerHTML = `
             <div class="flex items-center justify-between">
               <div>
-                <p class="text-xs uppercase tracking-wider text-muted font-medium">Сегодня</p>
+                <p class="text-[11px] uppercase tracking-wider text-muted font-medium">Сегодня</p>
                 <p class="text-base font-medium text-muted mt-1">Сегодня пропуск</p>
               </div>
-              <button id="btn-today-change-no" type="button" class="text-xs font-medium text-white border border-hairline rounded-lg px-3.5 py-2 active:bg-skipped touch-manipulation transition-colors">
+              <button id="btn-today-change-no" type="button" class="text-xs font-semibold text-white bg-cardAlt hairline-border rounded-xl px-3.5 py-2 active:bg-skipped touch-manipulation transition-colors">
                 Изменить
               </button>
             </div>
@@ -577,12 +870,12 @@
           return;
         }
 
-        // Состояние 3: Сегодня уже есть тренировка (status === 'yes')
+        // Состояние 3: Есть тренировка
         const reps = todayRec.reps || 0;
         container.innerHTML = `
           <div class="flex items-start justify-between gap-3">
             <div>
-              <div class="inline-flex items-center gap-1.5 text-xs font-medium text-accent">
+              <div class="inline-flex items-center gap-1.5 text-xs font-semibold text-accent">
                 <span class="w-1.5 h-1.5 rounded-full bg-accent"></span>
                 На площадке
               </div>
@@ -596,7 +889,7 @@
             </button>
           </div>
           <div class="mt-4">
-            <button id="btn-today-add-set" type="button" class="w-full py-3 rounded-lg bg-white text-black font-semibold text-sm active:opacity-80 touch-manipulation transition-opacity">
+            <button id="btn-today-add-set" type="button" class="w-full py-3.5 rounded-xl bg-white text-black font-semibold text-sm active:opacity-85 touch-manipulation transition-opacity">
               + Подход
             </button>
           </div>
@@ -614,11 +907,11 @@
       }
 
       // =========================================================================
-      // РЕНДЕР: СВОДНАЯ СТАТИСТИКА (ДЕНЬ / НЕДЕЛЯ ПН-ВС / МЕСЯЦ ПО МСК)
+      // РЕНДЕР: СВОДНАЯ СТАТИСТИКА (СЕГОДНЯ / НЕДЕЛЯ ПН–ВС / МЕСЯЦ ПО МСК)
       // =========================================================================
 
       function renderSummaryStats() {
-        // 1. День
+        // 1. Сегодня
         const todayRec = records[todayKey];
         const dayReps = todayRec && todayRec.status === 'yes' ? todayRec.reps : 0;
         document.getElementById('stat-day-reps').textContent = dayReps;
@@ -627,7 +920,7 @@
           : (todayRec.status === 'yes' ? pluralizeReps(dayReps) : 'пропуск');
 
         // 2. Текущая неделя (Пн–Вс по МСК)
-        const weekdayIdx = getWeekdayMonZero(todayKey); // 0 = Пн ... 6 = Вс
+        const weekdayIdx = getWeekdayMonZero(todayKey);
         const mondayKey = shiftDateKey(todayKey, -weekdayIdx);
         let weekReps = 0;
         let weekDays = 0;
@@ -642,20 +935,20 @@
         document.getElementById('stat-week-reps').textContent = weekReps;
         document.getElementById('stat-week-days').textContent = `${weekDays} дн.`;
 
-        // 3. Текущий месяц по МСК
+        // 3. Текущий месяц (1-е — последнее число по МСК)
         const { year, month } = parseDateKey(todayKey);
+        const daysInMonth = getDaysInMonth(year, month);
         const monthPrefix = `${year}-${String(month).padStart(2, '0')}-`;
         let monthReps = 0;
         let monthDays = 0;
-        Object.keys(records).forEach(k => {
-          if (k.startsWith(monthPrefix)) {
-            const rec = records[k];
-            if (rec && rec.status === 'yes') {
-              monthReps += rec.reps || 0;
-              monthDays += 1;
-            }
+        for (let d = 1; d <= daysInMonth; d++) {
+          const k = `${monthPrefix}${String(d).padStart(2, '0')}`;
+          const rec = records[k];
+          if (rec && rec.status === 'yes') {
+            monthReps += rec.reps || 0;
+            monthDays += 1;
           }
-        });
+        }
         document.getElementById('stat-month-reps').textContent = monthReps;
         document.getElementById('stat-month-days').textContent = `${monthDays} дн.`;
       }
@@ -671,40 +964,35 @@
 
         titleEl.textContent = `${MONTHS_NOM_RU[viewMonth]} ${viewYear}`;
 
-        // Блокируем переход в будущие месяцы относительно текущего МСК
         const todayParts = parseDateKey(todayKey);
         const isCurrentOrFutureMonth = viewYear > todayParts.year || (viewYear === todayParts.year && viewMonth >= todayParts.month - 1);
         nextBtn.disabled = isCurrentOrFutureMonth;
 
-        // Первый день месяца и количество дней
         const firstDayKey = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-01`;
-        const startOffset = getWeekdayMonZero(firstDayKey); // пустые ячейки до 1-го числа
-        const daysInMonth = new Date(Date.UTC(viewYear, viewMonth + 1, 0)).getUTCDate();
+        const startOffset = getWeekdayMonZero(firstDayKey);
+        const daysInMonth = getDaysInMonth(viewYear, viewMonth + 1);
 
         const fragments = [];
-
-        // Пустые ячейки начала сетки
         for (let i = 0; i < startOffset; i++) {
           fragments.push(`<div class="h-11"></div>`);
         }
 
-        // Ячейки дней месяца
         for (let day = 1; day <= daysInMonth; day++) {
           const key = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const isToday = key === todayKey;
           const isFuture = key > todayKey;
           const rec = records[key];
 
-          let cellClasses = 'h-11 rounded-lg flex flex-col items-center justify-center tabular-nums select-none transition-colors ';
+          let cellClasses = 'h-11 rounded-xl flex flex-col items-center justify-center tabular-nums select-none transition-colors ';
           let innerHtml = '';
 
           if (isFuture) {
-            cellClasses += 'bg-transparent text-[#3A3A3C] cursor-default';
+            cellClasses += 'bg-transparent text-white/20 cursor-default';
             innerHtml = `<span class="text-xs font-medium">${day}</span>`;
           } else if (rec && rec.status === 'yes') {
-            cellClasses += 'bg-accent text-white active:opacity-80 cursor-pointer touch-manipulation';
+            cellClasses += 'bg-accent text-white active:opacity-85 cursor-pointer touch-manipulation';
             innerHtml = `
-              <span class="text-[10px] leading-none opacity-80">${day}</span>
+              <span class="text-[10px] leading-none opacity-85">${day}</span>
               <span class="text-xs font-bold leading-tight mt-0.5">${rec.reps}</span>
             `;
           } else if (rec && rec.status === 'no') {
@@ -714,11 +1002,10 @@
               <span class="text-[10px] leading-tight mt-0.5 opacity-60">—</span>
             `;
           } else {
-            cellClasses += 'bg-oled border border-hairline text-muted active:bg-skipped cursor-pointer touch-manipulation';
+            cellClasses += 'bg-cardAlt hairline-border text-muted active:bg-skipped cursor-pointer touch-manipulation';
             innerHtml = `<span class="text-xs font-medium">${day}</span>`;
           }
 
-          // Обводка для сегодняшнего дня по МСК
           if (isToday) {
             cellClasses += ' ring-[1.5px] ring-white';
           }
@@ -732,7 +1019,6 @@
 
         gridEl.innerHTML = fragments.join('');
 
-        // Обработчик тапа по дню
         gridEl.querySelectorAll('[data-cal-day]').forEach(btn => {
           btn.addEventListener('click', () => {
             openDayModal(btn.getAttribute('data-cal-day'));
@@ -768,8 +1054,7 @@
         }
 
         totalEl.textContent = `${total14} ${pluralizeReps(total14)}`;
-
-        const maxBarHeightPx = 82; // максимальная высота столбца
+        const maxBarHeightPx = 82;
 
         container.innerHTML = days.map(item => {
           let barHtml = '';
@@ -786,7 +1071,7 @@
           } else if (item.rec && item.rec.status === 'no') {
             barHtml = `<div class="w-full rounded-sm bg-skipped" style="height: 4px"></div>`;
           } else {
-            barHtml = `<div class="w-full rounded-sm bg-hairline" style="height: 2px"></div>`;
+            barHtml = `<div class="w-full rounded-sm bg-white/10" style="height: 2px"></div>`;
           }
 
           const dayLabelClass = item.isToday
@@ -823,12 +1108,12 @@
 
       function updateModalStatusUI() {
         if (modalSelectedStatus === 'yes') {
-          modalStatusYes.className = 'py-3 rounded-lg font-semibold text-sm border border-accent bg-accent text-white transition-colors touch-manipulation';
-          modalStatusNo.className = 'py-3 rounded-lg font-semibold text-sm border border-hairline bg-oled text-muted transition-colors touch-manipulation';
+          modalStatusYes.className = 'py-3 rounded-xl font-semibold text-sm bg-accent text-white transition-colors touch-manipulation';
+          modalStatusNo.className = 'py-3 rounded-xl font-semibold text-sm bg-cardAlt hairline-border text-muted transition-colors touch-manipulation';
           modalRepsBlock.classList.remove('hidden');
         } else {
-          modalStatusYes.className = 'py-3 rounded-lg font-semibold text-sm border border-hairline bg-oled text-muted transition-colors touch-manipulation';
-          modalStatusNo.className = 'py-3 rounded-lg font-semibold text-sm border border-white bg-skipped text-white transition-colors touch-manipulation';
+          modalStatusYes.className = 'py-3 rounded-xl font-semibold text-sm bg-cardAlt hairline-border text-muted transition-colors touch-manipulation';
+          modalStatusNo.className = 'py-3 rounded-xl font-semibold text-sm bg-skipped border border-white/30 text-white transition-colors touch-manipulation';
           modalRepsBlock.classList.add('hidden');
         }
       }
@@ -840,8 +1125,6 @@
         modalDateTitle.textContent = formatFullDateRu(key, false);
         modalSelectedStatus = rec ? rec.status : 'yes';
         modalRepsInput.value = rec && rec.status === 'yes' ? rec.reps : '';
-
-        // Показываем кнопку удаления, только если запись существует
         modalClearBtn.classList.toggle('hidden', !rec);
 
         updateModalStatusUI();
@@ -932,12 +1215,42 @@
       });
 
       // =========================================================================
-      // ЭКСПОРТ / ИМПОРТ JSON (БЭКАП)
+      // НАСТРОЙКИ: ЦЕЛЬ НА МЕСЯЦ
+      // =========================================================================
+
+      const settingsGoalInput = document.getElementById('settings-goal-input');
+      settingsGoalInput.value = settings.monthlyGoal;
+
+      document.querySelectorAll('[data-goal-preset]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          settingsGoalInput.value = btn.getAttribute('data-goal-preset');
+        });
+      });
+
+      document.getElementById('settings-save-goal-btn').addEventListener('click', () => {
+        const val = parseInt(settingsGoalInput.value, 10);
+        if (!Number.isFinite(val) || val < 1) {
+          showToast('Введи число больше 0');
+          return;
+        }
+        settings.monthlyGoal = Math.min(99999, val);
+        saveSettings();
+        renderMonthlyGoalCard();
+        showToast(`Цель обновлена: ${settings.monthlyGoal}`);
+      });
+
+      // =========================================================================
+      // ЭКСПОРТ / ИМПОРТ JSON
       // =========================================================================
 
       document.getElementById('export-btn').addEventListener('click', () => {
         try {
-          const payload = JSON.stringify({ version: 1, exportedAtMsk: todayKey, records }, null, 2);
+          const payload = JSON.stringify({
+            version: 2,
+            exportedAtMsk: todayKey,
+            settings,
+            records
+          }, null, 2);
           const blob = new Blob([payload], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -972,7 +1285,17 @@
               : parsed;
 
             if (!incoming || typeof incoming !== 'object') {
-              throw new Error('Неверный формат');
+              throw new Error('Invalid format');
+            }
+
+            // Восстанавливаем цель, если она была в бэкапе
+            if (parsed && parsed.settings && Number.isFinite(parseInt(parsed.settings.monthlyGoal, 10))) {
+              const g = parseInt(parsed.settings.monthlyGoal, 10);
+              if (g > 0) {
+                settings.monthlyGoal = g;
+                saveSettings();
+                settingsGoalInput.value = g;
+              }
             }
 
             let count = 0;
@@ -1005,7 +1328,7 @@
       });
 
       // =========================================================================
-      // АВТООБНОВЛЕНИЕ ПРИ СМЕНЕ СУТОК ПО МСК И ВОЗВРАТЕ В ПРИЛОЖЕНИЕ
+      // АВТООБНОВЛЕНИЕ ПРИ СМЕНЕ СУТОК ПО МСК
       // =========================================================================
 
       function syncMskDayIfChanged() {
@@ -1026,7 +1349,6 @@
         }
       });
 
-      // Проверяем смену суток раз в минуту
       setInterval(syncMskDayIfChanged, 60000);
 
       // =========================================================================
@@ -1034,7 +1356,8 @@
       // =========================================================================
 
       function renderAll() {
-        renderHeader();
+        renderHeaderAndStreak();
+        renderMonthlyGoalCard();
         renderTodayCard();
         renderSummaryStats();
         renderCalendar();
