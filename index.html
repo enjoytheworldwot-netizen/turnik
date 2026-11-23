@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Турник</title>
+
+  <!-- Настройки iOS PWA (полноэкранный режим на iPhone) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Турник">
+  <meta name="theme-color" content="#000000">
+  <meta name="format-detection" content="telephone=no">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            oled: '#000000',
+            surface: '#141414',
+            hairline: '#262626',
+            muted: '#8A8A8E',
+            accent: '#FF5500',
+            skipped: '#2C2C2E',
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'Helvetica Neue', 'Arial', 'sans-serif'],
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Базовые настройки под OLED iPhone без лишних эффектов */
+    html, body {
+      background-color: #000000;
+      color: #FFFFFF;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: none;
+    }
+
+    /* Убираем стрелки у числовых инпутов */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+
+    /* Безопасные отступы для iPhone с Dynamic Island / челкой */
+    .safe-top {
+      padding-top: max(1.25rem, env(safe-area-inset-top));
+    }
+    .safe-bottom {
+      padding-bottom: max(2rem, env(safe-area-inset-bottom));
+    }
+  </style>
+</head>
+<body class="bg-oled text-white font-sans min-h-screen selection:bg-accent selection:text-white">
+
+  <!-- Основной контейнер: на десктопе центрирован (430px), на iPhone на всю ширину -->
+  <main class="w-full max-w-[430px] mx-auto px-4 safe-top safe-bottom flex flex-col gap-5">
+
+    <!-- Шапка: название и текущая дата по МСК -->
+    <header class="flex items-baseline justify-between pt-1 pb-1 border-b border-hairline">
+      <h1 class="text-lg font-bold tracking-tight uppercase">Турник</h1>
+      <p id="msk-date-label" class="text-xs text-muted font-medium tabular-nums">Загрузка...</p>
+    </header>
+
+    <!-- 1. Карточка отметки за сегодня (МСК) -->
+    <section id="today-card" class="bg-surface border border-hairline rounded-xl p-4" aria-label="Отметка за сегодня">
+      <!-- Динамически рендерится из JS -->
+    </section>
+
+    <!-- 2. Сводная статистика: День / Неделя / Месяц -->
+    <section class="grid grid-cols-3 gap-2.5" aria-label="Сводная статистика">
+      <div class="bg-surface border border-hairline rounded-xl p-3 flex flex-col justify-between">
+        <span class="text-[11px] uppercase tracking-wider text-muted font-medium">День</span>
+        <div class="mt-2">
+          <div id="stat-day-reps" class="text-2xl font-bold leading-none tabular-nums">0</div>
+          <div id="stat-day-sub" class="text-[11px] text-muted mt-1.5 tabular-nums">—</div>
+        </div>
+      </div>
+
+      <div class="bg-surface border border-hairline rounded-xl p-3 flex flex-col justify-between">
+        <span class="text-[11px] uppercase tracking-wider text-muted font-medium">Неделя</span>
+        <div class="mt-2">
+          <div id="stat-week-reps" class="text-2xl font-bold leading-none tabular-nums">0</div>
+          <div id="stat-week-days" class="text-[11px] text-muted mt-1.5 tabular-nums">0 дн.</div>
+        </div>
+      </div>
+
+      <div class="bg-surface border border-hairline rounded-xl p-3 flex flex-col justify-between">
+        <span class="text-[11px] uppercase tracking-wider text-muted font-medium">Месяц</span>
+        <div class="mt-2">
+          <div id="stat-month-reps" class="text-2xl font-bold leading-none tabular-nums">0</div>
+          <div id="stat-month-days" class="text-[11px] text-muted mt-1.5 tabular-nums">0 дн.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Визуальная статистика: Календарь посещений -->
+    <section class="bg-surface border border-hairline rounded-xl p-4" aria-label="Календарь посещений">
+      <div class="flex items-center justify-between mb-4">
+        <h2 id="calendar-month-title" class="text-sm font-semibold capitalize">Месяц</h2>
+        <div class="flex items-center gap-1.5">
+          <button
+            id="cal-prev-btn"
+            type="button"
+            aria-label="Предыдущий месяц"
+            class="w-8 h-8 flex items-center justify-center rounded-lg border border-hairline text-white active:bg-skipped touch-manipulation transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 12L6 8L10 4"/>
+            </svg>
+          </button>
+          <button
+            id="cal-next-btn"
+            type="button"
+            aria-label="Следующий месяц"
+            class="w-8 h-8 flex items-center justify-center rounded-lg border border-hairline text-white active:bg-skipped disabled:opacity-30 touch-manipulation transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 12L10 8L6 4"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Дни недели (Пн–Вс) -->
+      <div class="grid grid-cols-7 gap-1.5 mb-2 text-center">
+        <span class="text-[11px] text-muted font-medium">Пн</span>
+        <span class="text-[11px] text-muted font-medium">Вт</span>
+        <span class="text-[11px] text-muted font-medium">Ср</span>
+        <span class="text-[11px] text-muted font-medium">Чт</span>
+        <span class="text-[11px] text-muted font-medium">Пт</span>
+        <span class="text-[11px] text-muted font-medium">Сб</span>
+        <span class="text-[11px] text-muted font-medium">Вс</span>
+      </div>
+
+      <!-- Сетка дней месяца -->
+      <div id="calendar-grid" class="grid grid-cols-7 gap-1.5"></div>
+
+      <!-- Компактная легенда -->
+      <div class="flex items-center justify-between mt-4 pt-3 border-t border-hairline text-[11px] text-muted">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-sm bg-accent inline-block"></span>
+            Был
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-sm bg-skipped inline-block"></span>
+            Пропуск
+          </span>
+        </div>
+        <span>Тап по дню — правка</span>
+      </div>
+    </section>
+
+    <!-- 4. График за последние 14 дней (МСК) -->
+    <section class="bg-surface border border-hairline rounded-xl p-4" aria-label="График за 14 дней">
+      <div class="flex items-baseline justify-between mb-4">
+        <h2 class="text-sm font-semibold">Последние 14 дней</h2>
+        <span id="chart-14d-total" class="text-xs text-muted tabular-nums">0 раз</span>
+      </div>
+
+      <div id="chart-14d" class="grid grid-cols-14 gap-1 items-end h-36 pt-5" style="grid-template-columns: repeat(14, minmax(0, 1fr));">
+        <!-- Столбцы рендерятся из JS -->
+      </div>
+    </section>
+
+    <!-- 5. Резервная копия (Экспорт / Импорт JSON) -->
+    <footer class="flex items-center justify-center gap-4 pt-1 pb-2 text-xs text-muted">
+      <button id="export-btn" type="button" class="py-1.5 px-2 hover:text-white active:text-white touch-manipulation transition-colors">
+        Экспорт JSON
+      </button>
+      <span class="text-hairline">|</span>
+      <button id="import-btn" type="button" class="py-1.5 px-2 hover:text-white active:text-white touch-manipulation transition-colors">
+        Импорт JSON
+      </button>
+      <input id="import-file-input" type="file" accept="application/json,.json" class="hidden">
+    </footer>
+  </main>
+
+  <!-- Модальное окно (Bottom Sheet) для редактирования любого дня -->
+  <div id="day-modal-backdrop" class="fixed inset-0 bg-black/80 z-40 hidden items-end sm:items-center justify-center p-0 sm:p-4">
+    <div id="day-modal-panel" class="w-full max-w-[430px] bg-surface border-t sm:border border-hairline rounded-t-2xl sm:rounded-2xl p-5 safe-bottom">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="text-[11px] uppercase tracking-wider text-muted font-medium">Запись за день · МСК</p>
+          <h3 id="modal-date-title" class="text-base font-semibold mt-0.5">—</h3>
+        </div>
+        <button id="modal-close-btn" type="button" aria-label="Закрыть" class="w-8 h-8 rounded-lg border border-hairline flex items-center justify-center text-muted active:text-white touch-manipulation">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M4 4L12 12M12 4L4 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Переключатель статуса -->
+      <div class="grid grid-cols-2 gap-2.5 mb-4">
+        <button id="modal-status-yes" type="button" class="py-3 rounded-lg font-semibold text-sm border transition-colors touch-manipulation">
+          Был на площадке
+        </button>
+        <button id="modal-status-no" type="button" class="py-3 rounded-lg font-semibold text-sm border transition-colors touch-manipulation">
+          Пропуск
+        </button>
+      </div>
+
+      <!-- Блок ввода подтягиваний (виден, если выбран статус "Был") -->
+      <div id="modal-reps-block" class="mb-4">
+        <label for="modal-reps-input" class="block text-xs text-muted mb-2">Сколько раз подтянулся?</label>
+        <input
+          id="modal-reps-input"
+          type="number"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          min="0"
+          max="9999"
+          placeholder="0"
+          class="w-full bg-oled border border-hairline focus:border-white rounded-lg px-4 py-3 text-2xl font-bold text-white tabular-nums outline-none transition-colors"
+        >
+        <div class="grid grid-cols-3 gap-2 mt-2.5">
+          <button type="button" data-modal-add="1" class="py-2.5 rounded-lg bg-oled border border-hairline text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+1</button>
+          <button type="button" data-modal-add="5" class="py-2.5 rounded-lg bg-oled border border-hairline text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+5</button>
+          <button type="button" data-modal-add="10" class="py-2.5 rounded-lg bg-oled border border-hairline text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+10</button>
+        </div>
+      </div>
+
+      <!-- Кнопки действий -->
+      <div class="flex flex-col gap-2">
+        <button id="modal-save-btn" type="button" class="w-full py-3.5 rounded-lg bg-white text-black font-semibold text-sm active:opacity-80 touch-manipulation transition-opacity">
+          Сохранить
+        </button>
+        <button id="modal-clear-btn" type="button" class="w-full py-2.5 rounded-lg text-xs text-muted hover:text-white active:text-white touch-manipulation transition-colors">
+          Удалить запись за этот день
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Минималистичное уведомление (Toast) вместо alert() -->
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-white text-black text-xs font-semibold px-4 py-2.5 rounded-lg opacity-0 pointer-events-none transition-opacity duration-200">
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // =========================================================================
+      // КОНСТАНТЫ И ХРАНИЛИЩЕ
+      // =========================================================================
+      const STORAGE_KEY = 'turnik_pwa_records_v1';
+      const MOSCOW_TZ = 'Europe/Moscow';
+
+      const WEEKDAYS_RU = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+      const MONTHS_GEN_RU = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+      const MONTHS_NOM_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+      // Состояние приложения
+      let records = loadRecords();
+      let todayKey = getTodayMskKey();
+
+      // Текущий отображаемый месяц в календаре (год и месяц 0..11)
+      const initialParts = parseDateKey(todayKey);
+      let viewYear = initialParts.year;
+      let viewMonth = initialParts.month - 1;
+
+      // Режим карточки сегодняшнего дня: 'default' | 'input' | 'add_set' | 'edit'
+      let todayCardMode = 'default';
+
+      // Состояние модального окна для редактирования произвольного дня
+      let modalDateKey = null;
+      let modalSelectedStatus = 'yes';
+
+      // Таймер для скрытия toast-уведомления
+      let toastTimer = null;
+
+      // =========================================================================
+      // РАБОТА С ДАТАМИ СТРОГО ПО МОСКОВСКОМУ ВРЕМЕНИ (Europe/Moscow, UTC+3)
+      // =========================================================================
+
+      /**
+       * Возвращает сегодняшнюю дату по МСК в формате 'YYYY-MM-DD'
+       */
+      function getTodayMskKey() {
+        try {
+          const formatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: MOSCOW_TZ,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          });
+          return formatter.format(new Date());
+        } catch (err) {
+          // Фоллбэк на UTC+3, если окружение не поддерживает IANA timezone
+          const nowUtc = Date.now();
+          const mskDate = new Date(nowUtc + 3 * 60 * 60 * 1000);
+          return formatUtcDateKey(mskDate);
+        }
+      }
+
+      /**
+       * Разбирает строку 'YYYY-MM-DD' в числа { year, month (1..12), day }
+       */
+      function parseDateKey(key) {
+        const [y, m, d] = key.split('-').map(Number);
+        return { year: y, month: m, day: d };
+      }
+
+      /**
+       * Создает UTC Date на 00:00:00 для безопасной календарной арифметики без сдвигов часовых поясов
+       */
+      function keyToUtcDate(key) {
+        const { year, month, day } = parseDateKey(key);
+        return new Date(Date.UTC(year, month - 1, day));
+      }
+
+      /**
+       * Форматирует UTC Date обратно в 'YYYY-MM-DD'
+       */
+      function formatUtcDateKey(dateObj) {
+        const y = dateObj.getUTCFullYear();
+        const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+
+      /**
+       * Смещает дату 'YYYY-MM-DD' на deltaDays дней
+       */
+      function shiftDateKey(key, deltaDays) {
+        const dt = keyToUtcDate(key);
+        dt.setUTCDate(dt.getUTCDate() + deltaDays);
+        return formatUtcDateKey(dt);
+      }
+
+      /**
+       * Возвращает индекс дня недели, где 0 = Понедельник, 6 = Воскресенье
+       */
+      function getWeekdayMonZero(key) {
+        const day = keyToUtcDate(key).getUTCDay(); // 0 = Вс, 1 = Пн...
+        return (day + 6) % 7;
+      }
+
+      /**
+       * Форматирует дату в читаемый вид: "Понедельник, 23 ноября · МСК"
+       */
+      function formatFullDateRu(key, withMsk = true) {
+        const dt = keyToUtcDate(key);
+        const weekday = WEEKDAYS_RU[dt.getUTCDay()];
+        const day = dt.getUTCDate();
+        const month = MONTHS_GEN_RU[dt.getUTCMonth()];
+        return withMsk ? `${weekday}, ${day} ${month} · МСК` : `${weekday}, ${day} ${month}`;
+      }
+
+      /**
+       * Склонение слова "раз" для русского языка
+       */
+      function pluralizeReps(n) {
+        const abs = Math.abs(n) % 100;
+        const last = abs % 10;
+        if (abs > 10 && abs < 20) return 'раз';
+        if (last >= 2 && last <= 4) return 'раза';
+        return 'раз';
+      }
+
+      // =========================================================================
+      // ХРАНЕНИЕ ДАННЫХ (localStorage)
+      // =========================================================================
+
+      function loadRecords() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return {};
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== 'object') return {};
+          return parsed;
+        } catch (err) {
+          return {};
+        }
+      }
+
+      function saveRecords() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+        } catch (err) {
+          showToast('Ошибка сохранения данных');
+        }
+      }
+
+      function setDayRecord(key, status, reps) {
+        const cleanReps = status === 'yes' ? Math.max(0, Math.min(9999, parseInt(reps, 10) || 0)) : 0;
+        records[key] = { status, reps: cleanReps };
+        saveRecords();
+      }
+
+      function deleteDayRecord(key) {
+        delete records[key];
+        saveRecords();
+      }
+
+      // =========================================================================
+      // УВЕДОМЛЕНИЯ (TOAST)
+      // =========================================================================
+
+      function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.remove('opacity-0');
+        toast.classList.add('opacity-100');
+
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toast.classList.remove('opacity-100');
+          toast.classList.add('opacity-0');
+        }, 2200);
+      }
+
+      // =========================================================================
+      // РЕНДЕР: ШАПКА И КАРТОЧКА СЕГОДНЯШНЕГО ДНЯ
+      // =========================================================================
+
+      function renderHeader() {
+        document.getElementById('msk-date-label').textContent = formatFullDateRu(todayKey, true);
+      }
+
+      function renderTodayCard() {
+        const container = document.getElementById('today-card');
+        const todayRec = records[todayKey];
+
+        // Режим ввода количества подтягиваний (первая отметка, добавление подхода или правка)
+        if (todayCardMode === 'input' || todayCardMode === 'add_set' || todayCardMode === 'edit') {
+          const isAddSet = todayCardMode === 'add_set';
+          const existingReps = todayRec && todayRec.status === 'yes' ? todayRec.reps : 0;
+          const initialVal = todayCardMode === 'edit' ? existingReps : '';
+          const titleText = isAddSet
+            ? `Добавить подход (сейчас ${existingReps})`
+            : 'Сколько раз подтянулся?';
+          const submitText = isAddSet ? 'Добавить' : 'Сохранить';
+
+          container.innerHTML = `
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-semibold">${titleText}</span>
+              <button id="today-cancel-btn" type="button" class="text-xs text-muted active:text-white py-1 px-1.5 touch-manipulation">
+                Отмена
+              </button>
+            </div>
+            <input
+              id="today-reps-input"
+              type="number"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              min="0"
+              max="9999"
+              value="${initialVal}"
+              placeholder="0"
+              class="w-full bg-oled border border-hairline focus:border-white rounded-lg px-4 py-3.5 text-3xl font-bold text-white tabular-nums outline-none transition-colors"
+            >
+            <div class="grid grid-cols-3 gap-2 mt-2.5">
+              <button type="button" data-today-add="1" class="py-2.5 rounded-lg bg-oled border border-hairline text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+1</button>
+              <button type="button" data-today-add="5" class="py-2.5 rounded-lg bg-oled border border-hairline text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+5</button>
+              <button type="button" data-today-add="10" class="py-2.5 rounded-lg bg-oled border border-hairline text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+10</button>
+            </div>
+            <div class="flex gap-2 mt-3">
+              <button id="today-save-btn" type="button" class="flex-1 py-3.5 rounded-lg bg-white text-black font-semibold text-sm active:opacity-80 touch-manipulation transition-opacity">
+                ${submitText}
+              </button>
+              ${todayCardMode === 'edit' ? `
+                <button id="today-switch-no-btn" type="button" class="px-4 py-3.5 rounded-lg bg-oled border border-hairline text-muted font-medium text-sm active:text-white touch-manipulation">
+                  Пропуск
+                </button>
+              ` : ''}
+            </div>
+          `;
+
+          const input = document.getElementById('today-reps-input');
+          setTimeout(() => input && input.focus(), 30);
+
+          // Быстрые кнопки +1 / +5 / +10
+          container.querySelectorAll('[data-today-add]').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const delta = parseInt(btn.getAttribute('data-today-add'), 10);
+              const current = parseInt(input.value, 10) || 0;
+              input.value = current + delta;
+              input.focus();
+            });
+          });
+
+          // Сохранение по Enter
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              document.getElementById('today-save-btn').click();
+            }
+          });
+
+          document.getElementById('today-cancel-btn').addEventListener('click', () => {
+            todayCardMode = 'default';
+            renderTodayCard();
+          });
+
+          const switchNoBtn = document.getElementById('today-switch-no-btn');
+          if (switchNoBtn) {
+            switchNoBtn.addEventListener('click', () => {
+              setDayRecord(todayKey, 'no', 0);
+              todayCardMode = 'default';
+              renderAll();
+            });
+          }
+
+          document.getElementById('today-save-btn').addEventListener('click', () => {
+            const val = parseInt(input.value, 10);
+            const cleanVal = isNaN(val) ? 0 : Math.max(0, val);
+            if (isAddSet) {
+              setDayRecord(todayKey, 'yes', existingReps + cleanVal);
+            } else {
+              setDayRecord(todayKey, 'yes', cleanVal);
+            }
+            todayCardMode = 'default';
+            renderAll();
+          });
+
+          return;
+        }
+
+        // Состояние 1: Сегодня ещё нет записи
+        if (!todayRec) {
+          container.innerHTML = `
+            <p class="text-base font-semibold mb-4">Был сегодня на площадке?</p>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button id="btn-today-yes" type="button" class="py-4 rounded-lg bg-white text-black font-bold text-base tracking-wide active:opacity-80 touch-manipulation transition-opacity">
+                ДА
+              </button>
+              <button id="btn-today-no" type="button" class="py-4 rounded-lg bg-oled border border-hairline text-muted font-semibold text-base tracking-wide active:bg-skipped active:text-white touch-manipulation transition-colors">
+                НЕТ
+              </button>
+            </div>
+          `;
+
+          document.getElementById('btn-today-yes').addEventListener('click', () => {
+            todayCardMode = 'input';
+            renderTodayCard();
+          });
+
+          document.getElementById('btn-today-no').addEventListener('click', () => {
+            setDayRecord(todayKey, 'no', 0);
+            renderAll();
+          });
+          return;
+        }
+
+        // Состояние 2: Сегодня отмечен пропуск
+        if (todayRec.status === 'no') {
+          container.innerHTML = `
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-xs uppercase tracking-wider text-muted font-medium">Сегодня</p>
+                <p class="text-base font-medium text-muted mt-1">Сегодня пропуск</p>
+              </div>
+              <button id="btn-today-change-no" type="button" class="text-xs font-medium text-white border border-hairline rounded-lg px-3.5 py-2 active:bg-skipped touch-manipulation transition-colors">
+                Изменить
+              </button>
+            </div>
+          `;
+
+          document.getElementById('btn-today-change-no').addEventListener('click', () => {
+            todayCardMode = 'input';
+            renderTodayCard();
+          });
+          return;
+        }
+
+        // Состояние 3: Сегодня уже есть тренировка (status === 'yes')
+        const reps = todayRec.reps || 0;
+        container.innerHTML = `
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="inline-flex items-center gap-1.5 text-xs font-medium text-accent">
+                <span class="w-1.5 h-1.5 rounded-full bg-accent"></span>
+                На площадке
+              </div>
+              <div class="mt-1.5 flex items-baseline gap-2">
+                <span class="text-4xl font-bold leading-none tabular-nums">${reps}</span>
+                <span class="text-base text-muted font-medium">${pluralizeReps(reps)}</span>
+              </div>
+            </div>
+            <button id="btn-today-edit" type="button" class="text-xs text-muted active:text-white py-1.5 px-2 touch-manipulation">
+              Изменить
+            </button>
+          </div>
+          <div class="mt-4">
+            <button id="btn-today-add-set" type="button" class="w-full py-3 rounded-lg bg-white text-black font-semibold text-sm active:opacity-80 touch-manipulation transition-opacity">
+              + Подход
+            </button>
+          </div>
+        `;
+
+        document.getElementById('btn-today-add-set').addEventListener('click', () => {
+          todayCardMode = 'add_set';
+          renderTodayCard();
+        });
+
+        document.getElementById('btn-today-edit').addEventListener('click', () => {
+          todayCardMode = 'edit';
+          renderTodayCard();
+        });
+      }
+
+      // =========================================================================
+      // РЕНДЕР: СВОДНАЯ СТАТИСТИКА (ДЕНЬ / НЕДЕЛЯ ПН-ВС / МЕСЯЦ ПО МСК)
+      // =========================================================================
+
+      function renderSummaryStats() {
+        // 1. День
+        const todayRec = records[todayKey];
+        const dayReps = todayRec && todayRec.status === 'yes' ? todayRec.reps : 0;
+        document.getElementById('stat-day-reps').textContent = dayReps;
+        document.getElementById('stat-day-sub').textContent = !todayRec
+          ? 'не отмечено'
+          : (todayRec.status === 'yes' ? pluralizeReps(dayReps) : 'пропуск');
+
+        // 2. Текущая неделя (Пн–Вс по МСК)
+        const weekdayIdx = getWeekdayMonZero(todayKey); // 0 = Пн ... 6 = Вс
+        const mondayKey = shiftDateKey(todayKey, -weekdayIdx);
+        let weekReps = 0;
+        let weekDays = 0;
+        for (let i = 0; i < 7; i++) {
+          const k = shiftDateKey(mondayKey, i);
+          const rec = records[k];
+          if (rec && rec.status === 'yes') {
+            weekReps += rec.reps || 0;
+            weekDays += 1;
+          }
+        }
+        document.getElementById('stat-week-reps').textContent = weekReps;
+        document.getElementById('stat-week-days').textContent = `${weekDays} дн.`;
+
+        // 3. Текущий месяц по МСК
+        const { year, month } = parseDateKey(todayKey);
+        const monthPrefix = `${year}-${String(month).padStart(2, '0')}-`;
+        let monthReps = 0;
+        let monthDays = 0;
+        Object.keys(records).forEach(k => {
+          if (k.startsWith(monthPrefix)) {
+            const rec = records[k];
+            if (rec && rec.status === 'yes') {
+              monthReps += rec.reps || 0;
+              monthDays += 1;
+            }
+          }
+        });
+        document.getElementById('stat-month-reps').textContent = monthReps;
+        document.getElementById('stat-month-days').textContent = `${monthDays} дн.`;
+      }
+
+      // =========================================================================
+      // РЕНДЕР: КАЛЕНДАРЬ ПОСЕЩЕНИЙ
+      // =========================================================================
+
+      function renderCalendar() {
+        const titleEl = document.getElementById('calendar-month-title');
+        const gridEl = document.getElementById('calendar-grid');
+        const nextBtn = document.getElementById('cal-next-btn');
+
+        titleEl.textContent = `${MONTHS_NOM_RU[viewMonth]} ${viewYear}`;
+
+        // Блокируем переход в будущие месяцы относительно текущего МСК
+        const todayParts = parseDateKey(todayKey);
+        const isCurrentOrFutureMonth = viewYear > todayParts.year || (viewYear === todayParts.year && viewMonth >= todayParts.month - 1);
+        nextBtn.disabled = isCurrentOrFutureMonth;
+
+        // Первый день месяца и количество дней
+        const firstDayKey = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-01`;
+        const startOffset = getWeekdayMonZero(firstDayKey); // пустые ячейки до 1-го числа
+        const daysInMonth = new Date(Date.UTC(viewYear, viewMonth + 1, 0)).getUTCDate();
+
+        const fragments = [];
+
+        // Пустые ячейки начала сетки
+        for (let i = 0; i < startOffset; i++) {
+          fragments.push(`<div class="h-11"></div>`);
+        }
+
+        // Ячейки дней месяца
+        for (let day = 1; day <= daysInMonth; day++) {
+          const key = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const isToday = key === todayKey;
+          const isFuture = key > todayKey;
+          const rec = records[key];
+
+          let cellClasses = 'h-11 rounded-lg flex flex-col items-center justify-center tabular-nums select-none transition-colors ';
+          let innerHtml = '';
+
+          if (isFuture) {
+            cellClasses += 'bg-transparent text-[#3A3A3C] cursor-default';
+            innerHtml = `<span class="text-xs font-medium">${day}</span>`;
+          } else if (rec && rec.status === 'yes') {
+            cellClasses += 'bg-accent text-white active:opacity-80 cursor-pointer touch-manipulation';
+            innerHtml = `
+              <span class="text-[10px] leading-none opacity-80">${day}</span>
+              <span class="text-xs font-bold leading-tight mt-0.5">${rec.reps}</span>
+            `;
+          } else if (rec && rec.status === 'no') {
+            cellClasses += 'bg-skipped text-muted active:opacity-80 cursor-pointer touch-manipulation';
+            innerHtml = `
+              <span class="text-[10px] leading-none">${day}</span>
+              <span class="text-[10px] leading-tight mt-0.5 opacity-60">—</span>
+            `;
+          } else {
+            cellClasses += 'bg-oled border border-hairline text-muted active:bg-skipped cursor-pointer touch-manipulation';
+            innerHtml = `<span class="text-xs font-medium">${day}</span>`;
+          }
+
+          // Обводка для сегодняшнего дня по МСК
+          if (isToday) {
+            cellClasses += ' ring-[1.5px] ring-white';
+          }
+
+          if (isFuture) {
+            fragments.push(`<div class="${cellClasses}">${innerHtml}</div>`);
+          } else {
+            fragments.push(`<button type="button" data-cal-day="${key}" class="${cellClasses}">${innerHtml}</button>`);
+          }
+        }
+
+        gridEl.innerHTML = fragments.join('');
+
+        // Обработчик тапа по дню
+        gridEl.querySelectorAll('[data-cal-day]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            openDayModal(btn.getAttribute('data-cal-day'));
+          });
+        });
+      }
+
+      // =========================================================================
+      // РЕНДЕР: ГРАФИК ЗА ПОСЛЕДНИЕ 14 ДНЕЙ (МСК)
+      // =========================================================================
+
+      function renderChart14d() {
+        const container = document.getElementById('chart-14d');
+        const totalEl = document.getElementById('chart-14d-total');
+
+        const days = [];
+        let maxReps = 0;
+        let total14 = 0;
+
+        for (let i = 13; i >= 0; i--) {
+          const key = shiftDateKey(todayKey, -i);
+          const rec = records[key];
+          const reps = rec && rec.status === 'yes' ? (rec.reps || 0) : 0;
+          if (reps > maxReps) maxReps = reps;
+          total14 += reps;
+          days.push({
+            key,
+            dayNum: parseDateKey(key).day,
+            rec,
+            reps,
+            isToday: key === todayKey
+          });
+        }
+
+        totalEl.textContent = `${total14} ${pluralizeReps(total14)}`;
+
+        const maxBarHeightPx = 82; // максимальная высота столбца
+
+        container.innerHTML = days.map(item => {
+          let barHtml = '';
+          let labelTop = '';
+
+          if (item.rec && item.rec.status === 'yes') {
+            const heightPx = maxReps > 0
+              ? Math.max(6, Math.round((item.reps / maxReps) * maxBarHeightPx))
+              : 6;
+            labelTop = item.reps > 0
+              ? `<span class="text-[9px] font-semibold text-white tabular-nums leading-none mb-1">${item.reps}</span>`
+              : `<span class="text-[9px] text-accent tabular-nums leading-none mb-1">0</span>`;
+            barHtml = `<div class="w-full rounded-sm bg-accent" style="height: ${heightPx}px"></div>`;
+          } else if (item.rec && item.rec.status === 'no') {
+            barHtml = `<div class="w-full rounded-sm bg-skipped" style="height: 4px"></div>`;
+          } else {
+            barHtml = `<div class="w-full rounded-sm bg-hairline" style="height: 2px"></div>`;
+          }
+
+          const dayLabelClass = item.isToday
+            ? 'text-[10px] font-bold text-white tabular-nums mt-1.5'
+            : 'text-[10px] text-muted tabular-nums mt-1.5';
+
+          return `
+            <button type="button" data-chart-day="${item.key}" class="flex flex-col items-center justify-end h-full active:opacity-70 touch-manipulation" aria-label="День ${item.dayNum}">
+              ${labelTop}
+              ${barHtml}
+              <span class="${dayLabelClass}">${item.dayNum}</span>
+            </button>
+          `;
+        }).join('');
+
+        container.querySelectorAll('[data-chart-day]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            openDayModal(btn.getAttribute('data-chart-day'));
+          });
+        });
+      }
+
+      // =========================================================================
+      // МОДАЛЬНОЕ ОКНО РЕДАКТИРОВАНИЯ ДНЯ
+      // =========================================================================
+
+      const modalBackdrop = document.getElementById('day-modal-backdrop');
+      const modalDateTitle = document.getElementById('modal-date-title');
+      const modalStatusYes = document.getElementById('modal-status-yes');
+      const modalStatusNo = document.getElementById('modal-status-no');
+      const modalRepsBlock = document.getElementById('modal-reps-block');
+      const modalRepsInput = document.getElementById('modal-reps-input');
+      const modalClearBtn = document.getElementById('modal-clear-btn');
+
+      function updateModalStatusUI() {
+        if (modalSelectedStatus === 'yes') {
+          modalStatusYes.className = 'py-3 rounded-lg font-semibold text-sm border border-accent bg-accent text-white transition-colors touch-manipulation';
+          modalStatusNo.className = 'py-3 rounded-lg font-semibold text-sm border border-hairline bg-oled text-muted transition-colors touch-manipulation';
+          modalRepsBlock.classList.remove('hidden');
+        } else {
+          modalStatusYes.className = 'py-3 rounded-lg font-semibold text-sm border border-hairline bg-oled text-muted transition-colors touch-manipulation';
+          modalStatusNo.className = 'py-3 rounded-lg font-semibold text-sm border border-white bg-skipped text-white transition-colors touch-manipulation';
+          modalRepsBlock.classList.add('hidden');
+        }
+      }
+
+      function openDayModal(key) {
+        modalDateKey = key;
+        const rec = records[key];
+
+        modalDateTitle.textContent = formatFullDateRu(key, false);
+        modalSelectedStatus = rec ? rec.status : 'yes';
+        modalRepsInput.value = rec && rec.status === 'yes' ? rec.reps : '';
+
+        // Показываем кнопку удаления, только если запись существует
+        modalClearBtn.classList.toggle('hidden', !rec);
+
+        updateModalStatusUI();
+
+        modalBackdrop.classList.remove('hidden');
+        modalBackdrop.classList.add('flex');
+
+        if (modalSelectedStatus === 'yes') {
+          setTimeout(() => modalRepsInput.focus(), 50);
+        }
+      }
+
+      function closeDayModal() {
+        modalBackdrop.classList.add('hidden');
+        modalBackdrop.classList.remove('flex');
+        modalDateKey = null;
+      }
+
+      modalStatusYes.addEventListener('click', () => {
+        modalSelectedStatus = 'yes';
+        updateModalStatusUI();
+        modalRepsInput.focus();
+      });
+
+      modalStatusNo.addEventListener('click', () => {
+        modalSelectedStatus = 'no';
+        updateModalStatusUI();
+      });
+
+      document.querySelectorAll('[data-modal-add]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const delta = parseInt(btn.getAttribute('data-modal-add'), 10);
+          const current = parseInt(modalRepsInput.value, 10) || 0;
+          modalRepsInput.value = current + delta;
+        });
+      });
+
+      document.getElementById('modal-save-btn').addEventListener('click', () => {
+        if (!modalDateKey) return;
+        const val = parseInt(modalRepsInput.value, 10);
+        setDayRecord(modalDateKey, modalSelectedStatus, isNaN(val) ? 0 : val);
+        if (modalDateKey === todayKey) {
+          todayCardMode = 'default';
+        }
+        closeDayModal();
+        renderAll();
+      });
+
+      modalClearBtn.addEventListener('click', () => {
+        if (!modalDateKey) return;
+        deleteDayRecord(modalDateKey);
+        if (modalDateKey === todayKey) {
+          todayCardMode = 'default';
+        }
+        closeDayModal();
+        renderAll();
+      });
+
+      document.getElementById('modal-close-btn').addEventListener('click', closeDayModal);
+      modalBackdrop.addEventListener('click', (e) => {
+        if (e.target === modalBackdrop) closeDayModal();
+      });
+
+      // =========================================================================
+      // НАВИГАЦИЯ ПО КАЛЕНДАРЮ
+      // =========================================================================
+
+      document.getElementById('cal-prev-btn').addEventListener('click', () => {
+        viewMonth -= 1;
+        if (viewMonth < 0) {
+          viewMonth = 11;
+          viewYear -= 1;
+        }
+        renderCalendar();
+      });
+
+      document.getElementById('cal-next-btn').addEventListener('click', () => {
+        const todayParts = parseDateKey(todayKey);
+        if (viewYear > todayParts.year || (viewYear === todayParts.year && viewMonth >= todayParts.month - 1)) {
+          return;
+        }
+        viewMonth += 1;
+        if (viewMonth > 11) {
+          viewMonth = 0;
+          viewYear += 1;
+        }
+        renderCalendar();
+      });
+
+      // =========================================================================
+      // ЭКСПОРТ / ИМПОРТ JSON (БЭКАП)
+      // =========================================================================
+
+      document.getElementById('export-btn').addEventListener('click', () => {
+        try {
+          const payload = JSON.stringify({ version: 1, exportedAtMsk: todayKey, records }, null, 2);
+          const blob = new Blob([payload], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `turnik-backup-${todayKey}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          showToast('Бэкап скачан');
+        } catch (err) {
+          showToast('Не удалось выгрузить JSON');
+        }
+      });
+
+      const importFileInput = document.getElementById('import-file-input');
+      document.getElementById('import-btn').addEventListener('click', () => {
+        importFileInput.value = '';
+        importFileInput.click();
+      });
+
+      importFileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(String(reader.result));
+            const incoming = parsed && parsed.records && typeof parsed.records === 'object'
+              ? parsed.records
+              : parsed;
+
+            if (!incoming || typeof incoming !== 'object') {
+              throw new Error('Неверный формат');
+            }
+
+            let count = 0;
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            Object.keys(incoming).forEach(k => {
+              const item = incoming[k];
+              if (dateRegex.test(k) && item && (item.status === 'yes' || item.status === 'no')) {
+                records[k] = {
+                  status: item.status,
+                  reps: item.status === 'yes' ? Math.max(0, parseInt(item.reps, 10) || 0) : 0
+                };
+                count++;
+              }
+            });
+
+            if (count === 0) {
+              showToast('Записей в файле не найдено');
+              return;
+            }
+
+            saveRecords();
+            todayCardMode = 'default';
+            renderAll();
+            showToast(`Импортировано записей: ${count}`);
+          } catch (err) {
+            showToast('Ошибка чтения JSON файла');
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      // =========================================================================
+      // АВТООБНОВЛЕНИЕ ПРИ СМЕНЕ СУТОК ПО МСК И ВОЗВРАТЕ В ПРИЛОЖЕНИЕ
+      // =========================================================================
+
+      function syncMskDayIfChanged() {
+        const latestKey = getTodayMskKey();
+        if (latestKey !== todayKey) {
+          todayKey = latestKey;
+          const p = parseDateKey(todayKey);
+          viewYear = p.year;
+          viewMonth = p.month - 1;
+          todayCardMode = 'default';
+          renderAll();
+        }
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          syncMskDayIfChanged();
+        }
+      });
+
+      // Проверяем смену суток раз в минуту
+      setInterval(syncMskDayIfChanged, 60000);
+
+      // =========================================================================
+      // ПЕРВИЧНЫЙ РЕНДЕР
+      // =========================================================================
+
+      function renderAll() {
+        renderHeader();
+        renderTodayCard();
+        renderSummaryStats();
+        renderCalendar();
+        renderChart14d();
+      }
+
+      renderAll();
+    })();
+  </script>
+</body>
+</html>
