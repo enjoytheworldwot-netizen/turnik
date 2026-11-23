@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Турник</title>
 
-  <!-- Настройки iOS Safari PWA (полноэкранный режим на iPhone) -->
+  <!-- Настройки iOS Safari PWA (полноэкранный режим на iPhone 16 Pro) -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Турник">
   <meta name="theme-color" content="#000000">
   <meta name="format-detection" content="telephone=no">
@@ -22,7 +22,8 @@
             oled: '#000000',
             card: '#111113',
             cardAlt: '#18181B',
-            muted: '#8E8E93',
+            primary: '#FAFAFA',
+            muted: '#A1A1AA',
             accent: '#FF6B00',
             skipped: '#27272A',
           },
@@ -35,31 +36,44 @@
   </script>
 
   <style>
-    /* Базовые настройки под OLED iPhone */
+    /* Базовые настройки под OLED iPhone 16 Pro */
     html, body {
       background-color: #000000;
-      color: #FFFFFF;
+      color: #FAFAFA;
+      font-variant-numeric: tabular-nums;
       -webkit-font-smoothing: antialiased;
       -webkit-tap-highlight-color: transparent;
       overscroll-behavior-y: none;
     }
 
-    /* Тонкие iOS-границы */
+    /* Тонкие iOS-границы (#27272A) */
     .hairline-border {
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid #27272A;
     }
 
     .hairline-top {
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      border-top: 1px solid #27272A;
     }
 
     .hairline-bottom {
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid #27272A;
+    }
+
+    /* Верхний защитный слой под Dynamic Island на iPhone 16 Pro */
+    .top-safe-shield {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top, 59px);
+      background: #000000;
+      z-index: 100;
+      pointer-events: none;
     }
 
     /* Полупрозрачный нижний таббар в стиле iOS */
     .ios-tabbar {
-      background-color: rgba(12, 12, 14, 0.86);
+      background-color: rgba(12, 12, 14, 0.9);
       -webkit-backdrop-filter: saturate(180%) blur(20px);
       backdrop-filter: saturate(180%) blur(20px);
     }
@@ -74,15 +88,15 @@
       -moz-appearance: textfield;
     }
 
-    /* Безопасные отступы для iPhone с Dynamic Island и Home Indicator */
-    .safe-top {
-      padding-top: max(1rem, env(safe-area-inset-top));
+    /* Безопасные отступы для iPhone 16 Pro (Dynamic Island и Home Indicator) */
+    .header-safe-top {
+      padding-top: calc(env(safe-area-inset-top, 59px) + 20px);
     }
     .safe-bottom-nav {
-      padding-bottom: max(0.6rem, env(safe-area-inset-bottom));
+      padding-bottom: calc(env(safe-area-inset-bottom, 34px) + 10px);
     }
     .main-bottom-pad {
-      padding-bottom: calc(5.75rem + env(safe-area-inset-bottom));
+      padding-bottom: calc(6.25rem + env(safe-area-inset-bottom, 34px));
     }
 
     /* Плавная полоса прогресса */
@@ -99,10 +113,13 @@
     }
   </style>
 </head>
-<body class="bg-oled text-white font-sans min-h-screen selection:bg-accent selection:text-white">
+<body class="bg-oled text-primary font-sans min-h-screen selection:bg-accent selection:text-white">
+
+  <!-- Защитный чёрный слой под статус-бар и Dynamic Island -->
+  <div class="top-safe-shield" aria-hidden="true"></div>
 
   <!-- Основной контейнер: центрирован на десктопе, на всю ширину на iPhone -->
-  <div class="w-full max-w-[430px] mx-auto px-4 safe-top main-bottom-pad">
+  <div class="w-full max-w-[430px] mx-auto px-4 main-bottom-pad">
 
     <!-- ===================================================================== -->
     <!-- ВКЛАДКА 1: ГЛАВНАЯ -->
@@ -110,10 +127,10 @@
     <section id="tab-home" class="tab-panel active flex-col gap-4" aria-label="Главная">
 
       <!-- Верхняя панель: название, дата МСК, серия дней -->
-      <header class="flex items-center justify-between pt-1 pb-2 hairline-bottom">
+      <header class="flex items-center justify-between header-safe-top pb-3 hairline-bottom">
         <div>
-          <h1 class="text-xl font-bold tracking-tight leading-none">Турник</h1>
-          <p id="msk-date-label" class="text-xs text-muted font-medium mt-1 tabular-nums">Загрузка...</p>
+          <h1 class="text-xl font-bold tracking-tight leading-none text-primary">Турник</h1>
+          <p id="msk-date-label" class="text-xs text-muted font-medium mt-1.5 tabular-nums">Загрузка...</p>
         </div>
 
         <!-- Бейдж серии (подряд дней на площадке) -->
@@ -121,7 +138,7 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="text-accent shrink-0">
             <path d="M12 2C12 2 16.5 6.2 16.5 11.2C16.5 13.7 15.1 15.8 13.1 16.7C13.7 15.4 13.5 13.6 12.1 12.4C11.4 14.3 9.7 15.4 9.7 17.3C9.7 18.7 10.6 19.9 11.9 20.4C8.4 20.1 6 17.2 6 13.6C6 9.3 9.6 5.5 12 2Z" fill="currentColor"/>
           </svg>
-          <span id="streak-value" class="text-xs font-semibold tabular-nums">0 дн.</span>
+          <span id="streak-value" class="text-xs font-semibold tabular-nums text-primary">0 дн.</span>
         </div>
       </header>
 
@@ -145,10 +162,10 @@
           <div id="goal-progress-bar" class="h-full bg-accent rounded-full progress-fill" style="width: 0%"></div>
         </div>
 
-        <!-- Остаток дней и средний темп -->
+        <!-- Остаток повторений, дней и средний темп -->
         <div class="mt-3.5 pt-3 hairline-top flex items-center justify-between text-xs text-muted tabular-nums">
-          <span id="goal-days-left">Осталось — дн.</span>
-          <span id="goal-pace" class="text-white/85 font-medium">— / день</span>
+          <span id="goal-days-left">Осталось 200 раз · — дн.</span>
+          <span id="goal-pace" class="text-primary font-medium">— / день</span>
         </div>
       </div>
 
@@ -190,9 +207,9 @@
     <!-- ===================================================================== -->
     <section id="tab-stats" class="tab-panel flex-col gap-4" aria-label="Статистика">
 
-      <header class="pt-1 pb-2 hairline-bottom">
-        <h1 class="text-xl font-bold tracking-tight leading-none">Статистика</h1>
-        <p class="text-xs text-muted font-medium mt-1">Календарь и динамика по МСК</p>
+      <header class="header-safe-top pb-3 hairline-bottom">
+        <h1 class="text-xl font-bold tracking-tight leading-none text-primary">Статистика</h1>
+        <p class="text-xs text-muted font-medium mt-1.5">Календарь и динамика по МСК</p>
       </header>
 
       <!-- Календарь посещений (Пн–Вс) -->
@@ -271,14 +288,14 @@
     <!-- ===================================================================== -->
     <section id="tab-settings" class="tab-panel flex-col gap-4" aria-label="Настройки">
 
-      <header class="pt-1 pb-2 hairline-bottom">
-        <h1 class="text-xl font-bold tracking-tight leading-none">Настройки</h1>
-        <p class="text-xs text-muted font-medium mt-1">Цель на месяц и резервная копия</p>
+      <header class="header-safe-top pb-3 hairline-bottom">
+        <h1 class="text-xl font-bold tracking-tight leading-none text-primary">Настройки</h1>
+        <p class="text-xs text-muted font-medium mt-1.5">Цель на месяц и резервная копия</p>
       </header>
 
       <!-- Редактор цели на месяц -->
       <div class="bg-card hairline-border rounded-2xl p-4">
-        <label for="settings-goal-input" class="block text-sm font-semibold">Цель на месяц (подтягиваний)</label>
+        <label for="settings-goal-input" class="block text-sm font-semibold text-primary">Цель на месяц (подтягиваний)</label>
         <p class="text-xs text-muted mt-1">Считается строго с 1-го по последнее число месяца по МСК.</p>
 
         <input
@@ -289,15 +306,16 @@
           min="1"
           max="99999"
           placeholder="200"
-          class="w-full mt-3.5 bg-oled hairline-border focus:border-white/40 rounded-xl px-4 py-3.5 text-3xl font-bold text-white tabular-nums outline-none transition-colors"
+          class="w-full mt-3.5 bg-oled hairline-border focus:border-white/40 rounded-xl px-4 py-3.5 text-3xl font-bold text-primary tabular-nums outline-none transition-colors"
         >
 
         <!-- Быстрые пресеты -->
-        <div class="grid grid-cols-4 gap-2 mt-3">
-          <button type="button" data-goal-preset="150" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation transition-colors">150</button>
-          <button type="button" data-goal-preset="200" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation transition-colors">200</button>
-          <button type="button" data-goal-preset="300" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation transition-colors">300</button>
-          <button type="button" data-goal-preset="500" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation transition-colors">500</button>
+        <div class="grid grid-cols-5 gap-1.5 mt-3">
+          <button type="button" data-goal-preset="100" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-xs font-semibold text-primary active:bg-skipped tabular-nums touch-manipulation transition-colors">100</button>
+          <button type="button" data-goal-preset="150" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-xs font-semibold text-primary active:bg-skipped tabular-nums touch-manipulation transition-colors">150</button>
+          <button type="button" data-goal-preset="200" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-xs font-semibold text-primary active:bg-skipped tabular-nums touch-manipulation transition-colors">200</button>
+          <button type="button" data-goal-preset="300" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-xs font-semibold text-primary active:bg-skipped tabular-nums touch-manipulation transition-colors">300</button>
+          <button type="button" data-goal-preset="500" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-xs font-semibold text-primary active:bg-skipped tabular-nums touch-manipulation transition-colors">500</button>
         </div>
 
         <button
@@ -439,10 +457,10 @@
       'use strict';
 
       // =========================================================================
-      // КОНСТАНТЫ И ХРАНИЛИЩЕ
+      // КОНСТАНТЫ И СОСТОЯНИЕ ПРИЛОЖЕНИЯ
       // =========================================================================
-      const RECORDS_KEY = 'turnik_pwa_records_v1';
-      const SETTINGS_KEY = 'turnik_pwa_settings_v1';
+      const RECORDS_KEY = 'turnik_pwa_records_v2';
+      const SETTINGS_KEY = 'turnik_pwa_settings_v2';
       const DEFAULT_MONTHLY_GOAL = 200;
       const MOSCOW_TZ = 'Europe/Moscow';
 
@@ -450,28 +468,22 @@
       const MONTHS_GEN_RU = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
       const MONTHS_NOM_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
-      // Состояние приложения
       let records = loadRecords();
       let settings = loadSettings();
       let todayKey = getTodayMskKey();
       let activeTab = 'home';
 
-      // Текущий отображаемый месяц в календаре
       const initialParts = parseDateKey(todayKey);
       let viewYear = initialParts.year;
-      let viewMonth = initialParts.month - 1; // 0..11
+      let viewMonth = initialParts.month - 1;
 
-      // Режим карточки сегодняшнего дня: 'default' | 'input' | 'add_set' | 'edit'
       let todayCardMode = 'default';
-
-      // Состояние модального окна редактирования дня
       let modalDateKey = null;
       let modalSelectedStatus = 'yes';
-
       let toastTimer = null;
 
       // =========================================================================
-      // РАБОТА С ДАТАМИ СТРОГО ПО МОСКОВСКОМУ ВРЕМЕНИ (Europe/Moscow)
+      // РАБОТА С ДАТАМИ СТРОГО ПО МОСКОВСКОМУ ВРЕМЕНИ (Europe/Moscow, UTC+3)
       // =========================================================================
 
       function getTodayMskKey() {
@@ -484,7 +496,8 @@
           });
           return formatter.format(new Date());
         } catch (err) {
-          const mskDate = new Date(Date.now() + 3 * 60 * 60 * 1000);
+          const nowUtc = Date.now();
+          const mskDate = new Date(nowUtc + 3 * 60 * 60 * 1000);
           return formatUtcDateKey(mskDate);
         }
       }
@@ -512,14 +525,13 @@
         return formatUtcDateKey(dt);
       }
 
-      function getDaysInMonth(year, month1Based) {
-        return new Date(Date.UTC(year, month1Based, 0)).getUTCDate();
-      }
-
-      // 0 = Понедельник ... 6 = Воскресенье
       function getWeekdayMonZero(key) {
         const day = keyToUtcDate(key).getUTCDay();
         return (day + 6) % 7;
+      }
+
+      function getDaysInMonth(year, month) {
+        return new Date(Date.UTC(year, month, 0)).getUTCDate();
       }
 
       function formatFullDateRu(key, withMsk = true) {
@@ -539,15 +551,50 @@
       }
 
       // =========================================================================
-      // ХРАНЕНИЕ ДАННЫХ (localStorage)
+      // ХРАНЕНИЕ ДАННЫХ (localStorage: { "YYYY-MM-DD": number })
       // =========================================================================
+
+      function normalizeRecordValue(rawVal) {
+        if (typeof rawVal === 'number' && Number.isFinite(rawVal)) {
+          return rawVal < 0 ? -1 : Math.min(9999, Math.floor(rawVal));
+        }
+        if (rawVal && typeof rawVal === 'object') {
+          if (rawVal.status === 'yes') {
+            return Math.max(0, Math.min(9999, parseInt(rawVal.reps, 10) || 0));
+          }
+          if (rawVal.status === 'no') {
+            return -1;
+          }
+        }
+        return null;
+      }
+
+      function getRecordState(key) {
+        if (!Object.prototype.hasOwnProperty.call(records, key)) return null;
+        const val = records[key];
+        if (typeof val !== 'number') return null;
+        if (val < 0) return { status: 'no', reps: 0 };
+        return { status: 'yes', reps: val };
+      }
 
       function loadRecords() {
         try {
           const raw = localStorage.getItem(RECORDS_KEY);
           if (!raw) return {};
           const parsed = JSON.parse(raw);
-          return parsed && typeof parsed === 'object' ? parsed : {};
+          if (!parsed || typeof parsed !== 'object') return {};
+
+          const normalized = {};
+          const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+          Object.keys(parsed).forEach(k => {
+            if (dateRegex.test(k)) {
+              const val = normalizeRecordValue(parsed[k]);
+              if (val !== null) {
+                normalized[k] = val;
+              }
+            }
+          });
+          return normalized;
         } catch (err) {
           return {};
         }
@@ -584,8 +631,11 @@
       }
 
       function setDayRecord(key, status, reps) {
-        const cleanReps = status === 'yes' ? Math.max(0, Math.min(9999, parseInt(reps, 10) || 0)) : 0;
-        records[key] = { status, reps: cleanReps };
+        if (status === 'yes') {
+          records[key] = Math.max(0, Math.min(9999, parseInt(reps, 10) || 0));
+        } else {
+          records[key] = -1;
+        }
         saveRecords();
       }
 
@@ -654,8 +704,8 @@
         let streak = 0;
         let cursor = todayKey;
 
-        // Если сегодня ещё нет отметки (или не отмечено "Был"), проверяем серию со вчерашнего дня
-        const todayRec = records[todayKey];
+        // Если сегодня ещё нет отметки, проверяем серию со вчерашнего дня
+        const todayRec = getRecordState(todayKey);
         if (!todayRec) {
           cursor = shiftDateKey(todayKey, -1);
         } else if (todayRec.status !== 'yes') {
@@ -663,7 +713,7 @@
         }
 
         while (true) {
-          const rec = records[cursor];
+          const rec = getRecordState(cursor);
           if (rec && rec.status === 'yes') {
             streak += 1;
             cursor = shiftDateKey(cursor, -1);
@@ -693,7 +743,7 @@
         let monthReps = 0;
         for (let d = 1; d <= daysInMonth; d++) {
           const k = `${monthPrefix}${String(d).padStart(2, '0')}`;
-          const rec = records[k];
+          const rec = getRecordState(k);
           if (rec && rec.status === 'yes') {
             monthReps += rec.reps || 0;
           }
@@ -711,7 +761,9 @@
         document.getElementById('goal-percent').textContent = `${pctRaw}%`;
         document.getElementById('goal-progress-bar').style.width = `${pctBar}%`;
 
-        document.getElementById('goal-days-left').textContent = `Осталось ${daysRemaining} дн.`;
+        document.getElementById('goal-days-left').textContent = repsRemaining > 0
+          ? `Осталось ${repsRemaining} ${pluralizeReps(repsRemaining)} · ${daysRemaining} дн.`
+          : `Осталось ${daysRemaining} дн.`;
 
         const paceEl = document.getElementById('goal-pace');
         if (repsRemaining === 0) {
@@ -720,7 +772,7 @@
         } else {
           const avgPerDay = Math.ceil(repsRemaining / daysRemaining);
           paceEl.textContent = `Нужно ~${avgPerDay} / день`;
-          paceEl.className = 'text-white/85 font-medium';
+          paceEl.className = 'text-primary font-medium';
         }
       }
 
@@ -730,7 +782,7 @@
 
       function renderTodayCard() {
         const container = document.getElementById('today-card');
-        const todayRec = records[todayKey];
+        const todayRec = getRecordState(todayKey);
 
         // Режим ввода цифр
         if (todayCardMode === 'input' || todayCardMode === 'add_set' || todayCardMode === 'edit') {
@@ -744,7 +796,7 @@
 
           container.innerHTML = `
             <div class="flex items-center justify-between mb-3">
-              <span class="text-sm font-semibold">${titleText}</span>
+              <span class="text-sm font-semibold text-primary">${titleText}</span>
               <button id="today-cancel-btn" type="button" class="text-xs text-muted active:text-white py-1 px-1.5 touch-manipulation">
                 Отмена
               </button>
@@ -758,15 +810,16 @@
               max="9999"
               value="${initialVal}"
               placeholder="0"
-              class="w-full bg-oled hairline-border focus:border-white/40 rounded-xl px-4 py-3.5 text-3xl font-bold text-white tabular-nums outline-none transition-colors"
+              class="w-full bg-oled hairline-border focus:border-white/40 rounded-xl px-4 py-3.5 text-3xl font-bold text-primary tabular-nums outline-none transition-colors"
             >
-            <div class="grid grid-cols-3 gap-2 mt-2.5">
-              <button type="button" data-today-add="1" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+1</button>
-              <button type="button" data-today-add="5" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+5</button>
-              <button type="button" data-today-add="10" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-white active:bg-skipped tabular-nums touch-manipulation">+10</button>
+            <div class="grid grid-cols-4 gap-2 mt-2.5">
+              <button type="button" data-today-add="1" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-primary active:bg-skipped tabular-nums touch-manipulation">+1</button>
+              <button type="button" data-today-add="3" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-primary active:bg-skipped tabular-nums touch-manipulation">+3</button>
+              <button type="button" data-today-add="5" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-primary active:bg-skipped tabular-nums touch-manipulation">+5</button>
+              <button type="button" data-today-add="10" class="py-2.5 rounded-xl bg-cardAlt hairline-border text-sm font-semibold text-primary active:bg-skipped tabular-nums touch-manipulation">+10</button>
             </div>
             <div class="flex gap-2 mt-3">
-              <button id="today-save-btn" type="button" class="flex-1 py-3.5 rounded-xl bg-white text-black font-semibold text-sm active:opacity-85 touch-manipulation transition-opacity">
+              <button id="today-save-btn" type="button" class="flex-1 py-3.5 rounded-xl bg-primary text-black font-semibold text-sm active:opacity-85 touch-manipulation transition-opacity">
                 ${submitText}
               </button>
               ${todayCardMode === 'edit' ? `
@@ -912,7 +965,7 @@
 
       function renderSummaryStats() {
         // 1. Сегодня
-        const todayRec = records[todayKey];
+        const todayRec = getRecordState(todayKey);
         const dayReps = todayRec && todayRec.status === 'yes' ? todayRec.reps : 0;
         document.getElementById('stat-day-reps').textContent = dayReps;
         document.getElementById('stat-day-sub').textContent = !todayRec
@@ -926,7 +979,7 @@
         let weekDays = 0;
         for (let i = 0; i < 7; i++) {
           const k = shiftDateKey(mondayKey, i);
-          const rec = records[k];
+          const rec = getRecordState(k);
           if (rec && rec.status === 'yes') {
             weekReps += rec.reps || 0;
             weekDays += 1;
@@ -943,7 +996,7 @@
         let monthDays = 0;
         for (let d = 1; d <= daysInMonth; d++) {
           const k = `${monthPrefix}${String(d).padStart(2, '0')}`;
-          const rec = records[k];
+          const rec = getRecordState(k);
           if (rec && rec.status === 'yes') {
             monthReps += rec.reps || 0;
             monthDays += 1;
@@ -981,7 +1034,7 @@
           const key = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const isToday = key === todayKey;
           const isFuture = key > todayKey;
-          const rec = records[key];
+          const rec = getRecordState(key);
 
           let cellClasses = 'h-11 rounded-xl flex flex-col items-center justify-center tabular-nums select-none transition-colors ';
           let innerHtml = '';
@@ -1040,7 +1093,7 @@
 
         for (let i = 13; i >= 0; i--) {
           const key = shiftDateKey(todayKey, -i);
-          const rec = records[key];
+          const rec = getRecordState(key);
           const reps = rec && rec.status === 'yes' ? (rec.reps || 0) : 0;
           if (reps > maxReps) maxReps = reps;
           total14 += reps;
@@ -1120,7 +1173,7 @@
 
       function openDayModal(key) {
         modalDateKey = key;
-        const rec = records[key];
+        const rec = getRecordState(key);
 
         modalDateTitle.textContent = formatFullDateRu(key, false);
         modalSelectedStatus = rec ? rec.status : 'yes';
@@ -1301,13 +1354,12 @@
             let count = 0;
             const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
             Object.keys(incoming).forEach(k => {
-              const item = incoming[k];
-              if (dateRegex.test(k) && item && (item.status === 'yes' || item.status === 'no')) {
-                records[k] = {
-                  status: item.status,
-                  reps: item.status === 'yes' ? Math.max(0, parseInt(item.reps, 10) || 0) : 0
-                };
-                count++;
+              if (dateRegex.test(k)) {
+                const val = normalizeRecordValue(incoming[k]);
+                if (val !== null) {
+                  records[k] = val;
+                  count++;
+                }
               }
             });
 
